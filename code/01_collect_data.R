@@ -171,7 +171,6 @@ mpc_dates <- function(years) {
 }
 
 # ---- manual files ----------------------------------------------------------------
-# KRX investor-trading downloads, saved unchanged as data_raw/original/<prefix>_<year>.csv
 # KRX downloads saved unchanged as data_raw/original/<prefix>_<start year>.csv (CP949,
 # first column 일자 "YYYY/MM/DD"). Stacks every chunk and keeps one column:
 #   futures (fut3, fut10): 외국인 합계 = foreign daily net buying, contracts, regular session
@@ -279,6 +278,10 @@ for (v in c("fut3_net", "fut10_net", "vkospi", "fgn_share"))
 # 12.67 / 12.29) while KOSPI and VIX are flat. Raw file kept as downloaded; value set NA.
 df$vkospi[df$date == as.Date("2019-04-10")] <- NA
 
+# FOMC action on a US non-trading day (2020-03-15, Sunday emergency cut): markets first
+# react on the next US trading day, so the dummy goes there.
+us_days <- df$date[df$us_open == 1]
+fomc <- sort(unique(as.Date(sapply(fomc, function(f) min(us_days[us_days >= f])))))
 df$fomc_day <- as.integer(df$date %in% fomc)   # US date of the FOMC statement
 df$mpc_day  <- as.integer(df$date %in% mpc)    # Korean date of the MPC decision
 
