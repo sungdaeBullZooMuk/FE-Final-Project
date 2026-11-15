@@ -1,0 +1,10 @@
+.DS_Store
+.Renviron
+.Rhistory
+.RData
+# course and teammate documents stay out of the public repo
+*.docx
+# FSS press release originals (about 250MB); rebuild with data_raw/fss_fgn_share.py
+data_raw/original/fss/*.pdf
+data_raw/original/fss/*.hwp
+__pycache__/
