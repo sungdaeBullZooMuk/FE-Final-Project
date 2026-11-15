@@ -533,6 +533,66 @@ if (STAGE >= 3) {
   res$garchx <- garch; save_tab(garch, "table7_garchx")
 }
 
+# ---- extra figures for the report (figures 4-7) -----------------------------------
+message("report figures")
+COL <- c("KTB 3y <- UST 2y" = "#2a78d6", "KTB 10y <- UST 10y" = "#eb6834")   # validated categorical pair
+lab_tg <- function(tg) ifelse(tg == "k3", "KTB 3y <- UST 2y", "KTB 10y <- UST 10y")
+theme_r <- theme_minimal(base_size = 10) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_line(colour = "grey90", linewidth = 0.3),
+        legend.position = "top", legend.title = element_blank(), plot.title = element_text(face = "bold"))
+
+# figure 4: yield levels (two panels, Korea vs US)
+lv <- rbind(data.frame(panel = "3y Korea vs 2y US", date = d$date, series = "Korea", y = d$kr3y),
+            data.frame(panel = "3y Korea vs 2y US", date = d$date, series = "US", y = d$us2y),
+            data.frame(panel = "10y Korea vs 10y US", date = d$date, series = "Korea", y = d$kr10y),
+            data.frame(panel = "10y Korea vs 10y US", date = d$date, series = "US", y = d$us10y))
+lv <- lv[!is.na(lv$y) & lv$date >= START, ]; lv$panel <- factor(lv$panel, levels = c("3y Korea vs 2y US", "10y Korea vs 10y US"))
+p4 <- ggplot(lv, aes(date, y, colour = series)) + geom_line(linewidth = 0.5) + facet_wrap(~ panel) +
+  scale_colour_manual(values = c(Korea = "#2a78d6", US = "#eb6834")) +
+  labs(x = NULL, y = "Yield (%)", title = "Figure 4. Korean and US government bond yields") + theme_r
+save_fig(p4, "figure4_levels", 10, 3.6)
+
+# figure 5: rolling 250-day spillover coefficient (dy on s)
+rb <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+  D <- prep(tg, conds = character(0))
+  b <- rollapplyr(seq_len(nrow(D)), 250, function(i) coef(lm(dy ~ s, D[i, ]))[2], fill = NA)
+  data.frame(target = lab_tg(tg), date = D$date, beta = b, full = coef(base[[tg]]$model)["s"]) }))
+rb <- rb[!is.na(rb$beta), ]
+p5 <- ggplot(rb, aes(date, beta, colour = target)) + geom_hline(yintercept = 0, colour = "grey60", linewidth = 0.3) +
+  geom_line(linewidth = 0.6) + geom_hline(aes(yintercept = full, colour = target), linetype = "dashed", linewidth = 0.4) +
+  scale_colour_manual(values = COL, breaks = names(COL)) +
+  labs(x = "End of 250-day window", y = "Spillover coefficient", title = "Figure 5. Rolling 250-day spillover coefficient (dashed = full sample)") + theme_r
+save_fig(p5, "figure5_rolling_beta", 10, 4)
+res$rolling_beta <- rb
+
+# figure 6: interaction coefficients with 95% HAC intervals (main vs no-trend)
+cp <- tab3[tab3$test6 | tab3$term == paste0("s:", REPS["H2"]), ]
+cp$label <- paste0(cp$hyp, ": ", sub("^s:|^sp:", "", cp$term), ifelse(grepl("^sp:", cp$term), " (US up days)", ""))
+cp$target <- lab_tg(cp$target); cp$spec <- ifelse(cp$spec == "trend", "with s x trend (main)", "without trend")
+p6 <- ggplot(cp, aes(est, label, colour = target, shape = spec)) + geom_vline(xintercept = 0, colour = "grey60", linewidth = 0.3) +
+  geom_pointrange(aes(xmin = est - 1.96 * se, xmax = est + 1.96 * se), position = position_dodge(width = 0.7), size = 0.35) +
+  scale_colour_manual(values = COL, breaks = names(COL)) + scale_shape_manual(values = c(16, 1)) +
+  labs(x = "Change in spillover per 1 s.d. of the condition (95% HAC interval)", y = NULL,
+       title = "Figure 6. Hypothesis tests: interaction coefficients") + theme_r + guides(colour = guide_legend(nrow = 1), shape = guide_legend(nrow = 1))
+save_fig(p6, "figure6_coefficients", 10, 4)
+
+if (STAGE >= 2) {
+  # figure 7: robustness of the three representative interactions
+  main <- do.call(rbind, lapply(names(TARGETS), function(tg) { cf <- hyp[[tg]]$fits$trend$coef
+    cf <- cf[cf$term %in% paste0("s:", REPS), ]; cf$check <- "Main"; cf$target <- tg; cf }))
+  rr <- rbind(main, rob_tab[!grepl("^R2", rob_tab$check), names(main)])
+  rr$hyp <- ifelse(grepl("kr1y_gap", rr$term), "H1 (|kr1y_gap|; R7 signed)", ifelse(grepl("fut3|st_spread", rr$term), "H2 (fut3; R8 st_spread)", "H3 (VIX; R7 fx_vol)"))
+  rr$target <- lab_tg(rr$target)
+  rr$check[rr$check %in% c("R1 shock us10y", "R1 shock us2y")] <- "R1 swap shock (3y: US10y, 10y: US2y)"
+  rr$check <- factor(rr$check, levels = rev(unique(c("Main", rr$check))))
+  p7 <- ggplot(rr, aes(est, check, colour = target)) + geom_vline(xintercept = 0, colour = "grey60", linewidth = 0.3) +
+    geom_pointrange(aes(xmin = est - 1.96 * se, xmax = est + 1.96 * se), position = position_dodge(width = 0.6), size = 0.25) +
+    facet_wrap(~ hyp, nrow = 1) + scale_colour_manual(values = COL, breaks = names(COL)) +
+    scale_x_continuous(breaks = c(-0.1, -0.05, 0, 0.05)) + theme(panel.spacing.x = unit(1.2, "lines")) +
+    labs(x = "Interaction coefficient (95% HAC interval)", y = NULL, title = "Figure 7. Robustness of the interaction coefficients") + theme_r
+  save_fig(p7, "figure7_robustness", 11, 5.5)
+}
+
 # ---- save -------------------------------------------------------------------------
 res$pairs <- A
 res$session <- sessionInfo()

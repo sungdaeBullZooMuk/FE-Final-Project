@@ -18,9 +18,9 @@
 #   - ECOS API key in the environment variable ECOS_API_KEY
 #     (free: https://ecos.bok.or.kr/api/). Put it in ~/.Renviron, never in git.
 #   - Manual files in data_raw/ (optional; missing files become NA columns):
-#       original/fut3_YYYY.csv, original/fut10_YYYY.csv : KRX downloads as-is
+#       original/krx_futures/fut3_YYYY.csv, fut10_YYYY.csv : KRX downloads as-is
 #                             (foreign net buying of 3y / 10y KTB futures, contracts)
-#       original/vkospi_YYYY.csv : KRX VKOSPI downloads as-is (close)
+#       original/krx_vkospi/vkospi_YYYY.csv : KRX VKOSPI downloads as-is (close)
 #       fgn_share.csv       : pub_date, fgn_share (built by data_raw/fss_fgn_share.py)
 #                             (foreign share of listed bonds, %, by publication date,
 #                              YYYY-MM-DD)
@@ -171,13 +171,13 @@ mpc_dates <- function(years) {
 }
 
 # ---- manual files ----------------------------------------------------------------
-# KRX downloads saved unchanged as data_raw/original/<prefix>_<start year>.csv (CP949,
+# KRX downloads saved unchanged as data_raw/original/krx_*/<prefix>_<start year>.csv (CP949,
 # first column 일자 "YYYY/MM/DD"). Stacks every chunk and keeps one column:
 #   futures (fut3, fut10): 외국인 합계 = foreign daily net buying, contracts, regular session
 #   vkospi             : 종가 = daily close
 read_krx <- function(prefix, name, col) {
   fs <- list.files(file.path(RAW_DIR, "original"), sprintf("^%s_[0-9]{4}\\.csv$", prefix),
-                   full.names = TRUE)
+                   full.names = TRUE, recursive = TRUE)   # krx_futures/, krx_vkospi/
   if (length(fs) == 0) return(NULL)
   d <- do.call(rbind, lapply(fs, function(f) {
     x <- read.csv(f, fileEncoding = "CP949", check.names = FALSE)
