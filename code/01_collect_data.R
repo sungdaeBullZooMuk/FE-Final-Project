@@ -210,7 +210,9 @@ ecos <- list(
   ecos_get("817Y002", "010190000", "kr1y"),       # KTB 1y
   ecos_get("817Y002", "010502000", "cd91"),       # CD 91d
   ecos_get("722Y001", "0101000",   "base_rate"),  # BOK base rate
-  ecos_get("731Y001", "0000001",   "krw_usd"),    # KRW/USD (매매기준율)
+  # KRW/USD 15:30 close. Not 731Y001 (매매기준율): that rate is set from the previous
+  # day's trades, so it lags the market by one day.
+  ecos_get("731Y003", "0000003",   "krw_usd"),    # KRW/USD close 15:30
   ecos_get("802Y001", "0001000",   "kospi")       # KOSPI
 )
 
@@ -220,7 +222,7 @@ fred <- list(
   fred_get("DGS5",        "us5y"),        # robustness R1
   fred_get("DGS10",       "us10y"),
   fred_get("DGS3MO",      "us3m"),
-  fred_get("DFF",         "effr"),
+  fred_get("DFF",         "effr"),        # value for day d is published on d+1 (see doc)
   fred_get("VIXCLS",      "vix"),
   fred_get("DTWEXBGS",    "usd_idx"),
   fred_get("BAA10Y",      "baa_spread"),
@@ -235,6 +237,7 @@ yrs  <- as.integer(format(START, "%Y")):as.integer(format(END, "%Y"))
 fomc <- fomc_dates(yrs)
 mpc  <- mpc_dates(yrs)
 fomc <- fomc[fomc >= START & fomc <= END]
+mpc_all <- mpc                                   # keeps scheduled meetings after END
 mpc  <- mpc[mpc >= START & mpc <= END]
 
 message("Manual files ...")
@@ -284,13 +287,15 @@ us_days <- df$date[df$us_open == 1]
 fomc <- sort(unique(as.Date(sapply(fomc, function(f) min(us_days[us_days >= f])))))
 df$fomc_day <- as.integer(df$date %in% fomc)   # US date of the FOMC statement
 df$mpc_day  <- as.integer(df$date %in% mpc)    # Korean date of the MPC decision
+# Next MPC decision strictly after each date (for days_to_mpc); may fall after END
+df$next_mpc <- mpc_all[findInterval(df$date, mpc_all) + 1]
 
 cols <- c("date", "kr_open", "us_open",
           "kr3y", "kr10y", "us2y", "us5y", "us10y",                 # targets, shocks
           "kr1y", "cd91", "base_rate", "effr", "us3m",              # H1, H2 inputs
           "fut3_net", "fut10_net", "fgn_share",                     # H2
           "vix", "krw_usd", "vkospi", "usd_idx", "baa_spread",      # H3
-          "tp_kw", "tp_acm", "kospi", "fomc_day", "mpc_day")        # controls
+          "tp_kw", "tp_acm", "kospi", "fomc_day", "mpc_day", "next_mpc")  # controls
 df <- df[order(df$date), cols]
 
 # ---- checks ---------------------------------------------------------------------
@@ -299,6 +304,7 @@ stopifnot(all(df$kr3y > -1 & df$kr3y < 20, na.rm = TRUE),
           all(df$us10y > -1 & df$us10y < 20, na.rm = TRUE))
 if (any(df$fomc_day == 1 & df$us_open == 0)) warning("FOMC date on a US non-trading day")
 if (any(df$mpc_day == 1 & df$kr_open == 0))  warning("MPC date on a Korean non-trading day")
+if (anyNA(df$next_mpc)) warning("next_mpc missing: MPC schedule ends before some dates")
 
 cover <- data.frame(
   variable = cols[-1],
