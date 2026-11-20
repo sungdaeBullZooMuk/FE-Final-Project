@@ -7,7 +7,7 @@
 # =============================================================================
 load("output/Team_result.RData")
 OUT_HTML <- "output/report/results_summary.html"
-OUT_PDF  <- "분석결과_정리.pdf"
+OUT_PDF  <- "reports/분석결과_정리.pdf"
 dir.create(dirname(OUT_HTML), recursive = TRUE, showWarnings = FALSE)
 
 f  <- function(x, d = 3) ifelse(is.na(x), "–", formatC(x, format = "f", digits = d))
@@ -78,7 +78,7 @@ s1 <- paste0("<h2>1. 연구 설계 요약</h2>",
                         `대표 조건` = c("|국고채 1년 − 기준금리|", "외국인 3년 국채선물 누적 순매수 (250일 z)", "log VIX"),
                         `원래 예측` = c("전이 확대 (+)", "미국 금리 상승일 전이 확대 (+)", "전이 확대 (+)"), check.names = FALSE),
              "표 A. 가설과 대표 조건 변수", align = c("left", "left", "left")),
-  P("<b>변수 확정</b>: 대표 변수 3개는 결과를 보기 전에 정했고 바꾸지 않았다. 선행연구 검토(「조건별전이_변수확정_선행연구.md」)에 따라 LASSO 후보를 13개에서 ", n_cand,
+  P("<b>변수 확정</b>: 대표 변수 3개는 결과를 보기 전에 정했고 바꾸지 않았다. 선행연구 검토(「docs/조건별전이_변수확정_선행연구.md」)에 따라 LASSO 후보를 13개에서 ", n_cand,
     "개(|kr1y_gap|, policy_gap, fut3_cum, fut10_cum, fgn_share, log VIX, baa_spread, krw_chg20)로 줄였고, 충격 성격(mon)을 통제로 추가했다. mon의 효과는 넣기 전에 한 번 확인했다."),
   P("<b>미리 정한 설정</b>: 모든 검정은 양측이다. 전이 계수가 기간에 따라 커지므로 가설 모형과 LASSO에는 trend와 s×trend를 통제로 넣었다(추세 없는 결과도 함께 보고). ",
     "단위근 검정에서 I(1)로 나온 조건 ", paste(res$transformed, collapse = ", "), "은 250일 이동 z점수로 바꿨다. 다중검정은 가설 3개 × 만기 2개 = 6개에 Holm 보정을 한다."))
@@ -87,7 +87,7 @@ d1 <- res$desc; d1 <- d1[d1$variable %in% c("dy_kr3y", "dy_kr10y", "s_us2y", "s_
 d1$variable <- c(dy_kr3y = "Δ국고채 3년 (bp)", dy_kr10y = "Δ국고채 10년 (bp)", s_us2y = "충격 s: 미 2년 (bp)", s_us10y = "충격 s: 미 10년 (bp)",
                  abs_kr1y_gap = "|kr1y_gap| (%p)", fut3_cum = "fut3_cum (z)", vix = "log VIX")[d1$variable]
 s2 <- paste0("<h2>2. 데이터</h2>",
-  P("한국 거래일 쌍 ", format(n_pairs, big.mark = ","), "개(", per, "). 출처는 ECOS, FRED, 뉴욕 연은, KRX, 금융감독원이고 전처리 규칙은 「조건별전이_데이터전처리.md」에 있다."),
+  P("한국 거래일 쌍 ", format(n_pairs, big.mark = ","), "개(", per, "). 출처는 ECOS, FRED, 뉴욕 연은, KRX, 금융감독원이고 전처리 규칙은 「docs/조건별전이_데이터전처리.md」에 있다."),
   fig("figure4_levels.png", "그림 4. 한·미 국채 금리 수준"),
   html_table(data.frame(변수 = d1$variable, n = format(d1$n, big.mark = ","), 평균 = f(d1$mean, 2), 표준편차 = f(d1$sd, 2),
                         최소 = f(d1$min, 2), 최대 = f(d1$max, 2), 첨도 = f(d1$kurt, 1), check.names = FALSE),

@@ -133,7 +133,7 @@ svg text { font-family: 'Apple SD Gothic Neo', sans-serif; }
 <tr><td>FOMC·금통위 날짜</td><td>통제용 더미</td><td>연준·한국은행 홈페이지</td></tr>
 <tr><td>미 10년 기간프리미엄(KW, ACM)</td><td>견고성 R2</td><td>FRED, 뉴욕 연준</td></tr>
 </table>
-<p class="note">자세한 전처리 규칙은 「조건별전이_데이터전처리.md」에 있다. 예: KRX VKOSPI 2019-04-10 값은 원자료 오류라 지웠고, 원/달러는 하루 늦게 반영되는 매매기준율 대신 15:30 종가를 썼다.</p>
+<p class="note">자세한 전처리 규칙은 「docs/조건별전이_데이터전처리.md」에 있다. 예: KRX VKOSPI 2019-04-10 값은 원자료 오류라 지웠고, 원/달러는 하루 늦게 반영되는 매매기준율 대신 15:30 종가를 썼다.</p>
 
 <figure>
 <img src="../figures/figure4_levels.png" alt="한국과 미국 국채 금리 수준">
@@ -158,7 +158,7 @@ svg text { font-family: 'Apple SD Gothic Neo', sans-serif; }
 <p>이 연구는 같은 밤 NASDAQ이 미국 금리와 <b>반대로</b> 움직이면 통화정책형(mon = 1), 같은 방향이면 성장형(mon = 0)으로 나눴다. 이것은 가설이 아니라 모든 모형에 넣는 통제 변수다. 그래서 세 가설의 결과가 "충격 종류가 달랐던 탓"으로 생기지 않게 한다. 이 변수는 효과를 한 번 확인한 뒤 넣었고, 그 사실을 보고서에 밝힌다.</p>
 
 <h3>보조 후보 (LASSO용 8개)</h3>
-<p>대표 변수 외에도 같은 경로를 다르게 잴 수 있는 변수가 있다. 선행연구 근거가 있는 것만 골라 8개로 정했다. 정책금리 차(한국 − 미국), 10년 선물 순매수, 외국인 채권 보유 비중, 미 회사채 신용 스프레드, 원/달러 20일 변화율, 그리고 대표 변수 3개다. 근거와 탈락 이유는 「조건별전이_변수확정_선행연구.md」에 있다.</p>
+<p>대표 변수 외에도 같은 경로를 다르게 잴 수 있는 변수가 있다. 선행연구 근거가 있는 것만 골라 8개로 정했다. 정책금리 차(한국 − 미국), 10년 선물 순매수, 외국인 채권 보유 비중, 미 회사채 신용 스프레드, 원/달러 20일 변화율, 그리고 대표 변수 3개다. 근거와 탈락 이유는 「docs/조건별전이_변수확정_선행연구.md」에 있다.</p>
 
 <h2>6. 방법 ①: 회귀분석으로 전이 재기</h2>
 <h3>6-1. 기준 모형: 평균적으로 얼마나 넘어오나</h3>
@@ -315,12 +315,12 @@ svg text { font-family: 'Apple SD Gothic Neo', sans-serif; }
 <tr><th style="width:38%">파일</th><th>내용</th></tr>
 <tr><td>code/01_collect_data.R</td><td>데이터 수집(ECOS API 키 필요). 결과는 data/Data_team.csv</td></tr>
 <tr><td>code/02_analysis.R</td><td>분석 전체. 결과는 output/(표 csv, 그림 png, RData)</td></tr>
-<tr><td>code/03_results_report.R</td><td>분석결과_정리.pdf(전문가용 상세 결과)</td></tr>
-<tr><td>code/04_explainer.R</td><td>이 문서(연구_쉬운설명.pdf). 숫자는 분석 결과에서 자동으로 채운다</td></tr>
+<tr><td>code/03_results_report.R</td><td>reports/분석결과_정리.pdf(전문가용 상세 결과)</td></tr>
+<tr><td>code/04_explainer.R</td><td>이 문서(reports/연구_쉬운설명.pdf). 숫자는 분석 결과에서 자동으로 채운다</td></tr>
 <tr><td>code/00_build_submission.R</td><td>제출용 단일 R 파일(submission/)</td></tr>
-<tr><td>조건별전이_연구개요_확정.md</td><td>연구 설계 전체와 바뀐 점 기록</td></tr>
-<tr><td>조건별전이_데이터전처리.md</td><td>데이터 수집·정리 규칙</td></tr>
-<tr><td>조건별전이_변수확정_선행연구.md</td><td>변수별 선행연구 근거와 확정 과정</td></tr>
+<tr><td>docs/조건별전이_연구개요_확정.md</td><td>연구 설계 전체와 바뀐 점 기록</td></tr>
+<tr><td>docs/조건별전이_데이터전처리.md</td><td>데이터 수집·정리 규칙</td></tr>
+<tr><td>docs/조건별전이_변수확정_선행연구.md</td><td>변수별 선행연구 근거와 확정 과정</td></tr>
 <tr><td>data_raw/</td><td>KRX·금감원 원자료와 수집 스크립트</td></tr>
 </table>
 <div class="eq">Rscript code/02_analysis.R &nbsp;&nbsp;# 분석 (몇 분)<br>Rscript code/03_results_report.R &nbsp;&nbsp;# 상세 결과 PDF<br>Rscript code/04_explainer.R &nbsp;&nbsp;# 이 문서</div>

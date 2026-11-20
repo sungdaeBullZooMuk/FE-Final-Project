@@ -1,7 +1,7 @@
 # =============================================================================
 # 01_collect_data.R
 # FE Final Project: state-dependent spillovers from US Treasury yields to
-# Korean government bond yields (see 조건별전이_연구개요_확정.md, section 2).
+# Korean government bond yields (see docs/조건별전이_연구개요_확정.md, section 2).
 #
 # Builds data/Data_team.csv: one row per calendar day on which Korea or the US
 # traded, with raw daily LEVELS of every series. Derived variables (shock s,

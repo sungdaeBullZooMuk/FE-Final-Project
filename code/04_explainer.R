@@ -3,13 +3,13 @@
 # Beginner-friendly explanation of the whole project (Korean), from
 # code/explainer_template.html with numbers filled from output/Team_result.RData.
 # Run from "Final Project":  Rscript code/04_explainer.R
-# Output: output/report/explainer.html and 연구_쉬운설명.pdf (headless Chrome).
+# Output: output/report/explainer.html and reports/연구_쉬운설명.pdf (headless Chrome).
 # Not part of the submission file.
 # =============================================================================
 load("output/Team_result.RData")
 TEMPLATE <- "code/explainer_template.html"
 OUT_HTML <- "output/report/explainer.html"
-OUT_PDF  <- "연구_쉬운설명.pdf"
+OUT_PDF  <- "reports/연구_쉬운설명.pdf"
 dir.create(dirname(OUT_HTML), recursive = TRUE, showWarnings = FALSE)
 
 f  <- function(x, d = 2) formatC(x, format = "f", digits = d)

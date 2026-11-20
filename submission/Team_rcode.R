@@ -9,7 +9,7 @@ if (FALSE) {
 # =============================================================================
 # 01_collect_data.R
 # FE Final Project: state-dependent spillovers from US Treasury yields to
-# Korean government bond yields (see 조건별전이_연구개요_확정.md, section 2).
+# Korean government bond yields (see docs/조건별전이_연구개요_확정.md, section 2).
 #
 # Builds data/Data_team.csv: one row per calendar day on which Korea or the US
 # traded, with raw daily LEVELS of every series. Derived variables (shock s,
@@ -332,7 +332,7 @@ message("Wrote ", OUT_CSV, " (", nrow(df), " rows)")
 # 02_analysis.R
 # FE Final Project: state-dependent spillovers from US Treasury yields to
 # Korean government bond yields. Implements section 4 of
-# 조건별전이_연구개요_확정.md on Data_team.csv.
+# docs/조건별전이_연구개요_확정.md on Data_team.csv.
 #
 # Run from the "Final Project" folder:
 #   Rscript code/02_analysis.R            # everything
@@ -341,7 +341,7 @@ message("Wrote ", OUT_CSV, " (", nrow(df), " rows)")
 # Outputs: output/Team_result.RData (rename to <team>_result.RData),
 #          output/tables/*.csv, output/figures/*.png
 #
-# Decisions fixed before estimation (see 조건별전이_데이터전처리.md and the data review):
+# Decisions fixed before estimation (see docs/조건별전이_데이터전처리.md and the data review):
 #   - All tests are two-sided. The outline's predicted signs are reported next to
 #     each estimate, but a significant opposite sign is read as evidence, not a null.
 #   - Main hypothesis model adds trend and s x trend (trend = standardized date).
@@ -349,7 +349,7 @@ message("Wrote ", OUT_CSV, " (", nrow(df), " rows)")
 #     otherwise pick up the trend. The no-trend model is reported alongside.
 #   - Forecasting models (4-5) do not use the trend: a 1,000-day window does not
 #     support extrapolating it.
-#   - Variables follow 조건별전이_변수확정_선행연구.md: 3 representatives (H1-H3),
+#   - Variables follow docs/조건별전이_변수확정_선행연구.md: 3 representatives (H1-H3),
 #     8 LASSO candidates, and the shock type mon (Hoek, Kamin & Yoldas 2022) as an
 #     unpenalized control in every model with conditions (s x mon). mon = 1 when the
 #     NASDAQ return over the same US days as s has the opposite sign to s.
