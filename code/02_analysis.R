@@ -485,6 +485,18 @@ if (STAGE >= 2) {
     rob[[length(rob) + 1]] <- pick(lm(hyp_formula(conds = alt8), prep(tg, alt8)), "R8 st_spread for H2", tg, paste0("s:", alt8))
     # R9 (outline 2-5): hypothesis model on the 2012-05-31 sample
     rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), prep(tg, REPS, from = START10)), "R9 sample from 2012-05-31", tg)
+    # R10: nonlinearity in shock size. Is a condition effect only "large shocks pass through differently"?
+    D <- prep(tg, REPS); D$abs_s <- abs(D$s)
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
+                                   c(paste0("s:", REPS), "s:abs_s"))
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(asym_f = TRUE), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
+                                   paste0(c("sp", "sm"), ":", REPS["H2"]))
+    # R11: year-specific spillover (year dummies and s x year replace trend and s x trend).
+    # Identifies the condition effects from day-to-day variation within each year only.
+    D$yr <- factor(format(D$date, "%Y"))
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(trend = FALSE), . ~ . + yr + s:yr), D), "R11 within-year (s x year)", tg)
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(trend = FALSE, asym_f = TRUE), . ~ . + yr + s:yr), D),
+                                   "R11 within-year (s x year)", tg, paste0(c("sp", "sm"), ":", REPS["H2"]))
   }
   # R2: 10y shock split into expectations (s - s_tp) and term premium (s_tp), KW and ACM
   for (tp in c("tp_kw", "tp_acm")) {
@@ -581,6 +593,7 @@ if (STAGE >= 2) {
   main <- do.call(rbind, lapply(names(TARGETS), function(tg) { cf <- hyp[[tg]]$fits$trend$coef
     cf <- cf[cf$term %in% paste0("s:", REPS), ]; cf$check <- "Main"; cf$target <- tg; cf }))
   rr <- rbind(main, rob_tab[!grepl("^R2", rob_tab$check), names(main)])
+  rr <- rr[grepl("^s:", rr$term) & rr$term != "s:abs_s", ]      # symmetric interactions only (s+/s- and s x |s| are in the table)
   rr$hyp <- ifelse(grepl("kr1y_gap", rr$term), "H1 (|kr1y_gap|; R7 signed)", ifelse(grepl("fut3|st_spread", rr$term), "H2 (fut3; R8 st_spread)", "H3 (VIX; R7 fx_vol)"))
   rr$target <- lab_tg(rr$target)
   rr$check[rr$check %in% c("R1 shock us10y", "R1 shock us2y")] <- "R1 swap shock (3y: US10y, 10y: US2y)"
