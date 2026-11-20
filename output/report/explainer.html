@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>연구 쉬운 설명</title>
+<style>
+@page { size: A4; margin: 16mm 16mm 16mm 16mm; }
+:root { --ink: #0b0b0b; --muted: #52514e; --line: #d9d8d1; --soft: #f5f5f1; --blue: #2a78d6; --orange: #eb6834; --bluebg: #eef4fc; --orangebg: #fdf1eb; }
+body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; font-size: 10pt; line-height: 1.65; color: var(--ink); background: #fff; margin: 0; }
+h1 { font-size: 21pt; margin: 0 0 2pt; letter-spacing: -0.3pt; }
+.sub { color: var(--muted); margin: 0 0 14pt; font-size: 9.5pt; }
+h2 { font-size: 14pt; margin: 22pt 0 6pt; padding-bottom: 3pt; border-bottom: 1.5px solid var(--ink); break-after: avoid; }
+h3 { font-size: 11pt; margin: 14pt 0 4pt; break-after: avoid; }
+p { margin: 4pt 0 7pt; }
+ul, ol { margin: 4pt 0 8pt; padding-left: 18pt; } li { margin: 2.5pt 0; }
+b { font-weight: 700; }
+.box { border: 1px solid var(--line); border-left: 4px solid var(--blue); background: var(--bluebg); padding: 8pt 12pt; margin: 8pt 0 10pt; break-inside: avoid; }
+.box.warn { border-left-color: var(--orange); background: var(--orangebg); }
+.box h3 { margin-top: 0; }
+.eq { font-family: 'Menlo', 'Apple SD Gothic Neo', monospace; font-size: 9.6pt; background: var(--soft); border: 1px solid var(--line); padding: 6pt 10pt; margin: 6pt 0 8pt; break-inside: avoid; }
+table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 6pt 0 4pt; break-inside: avoid; font-variant-numeric: tabular-nums; }
+th { border-top: 1.2px solid var(--ink); border-bottom: 0.8px solid var(--ink); padding: 3pt 6pt; background: #f3f3f0; text-align: left; }
+td { border-bottom: 0.5px solid #e4e3dd; padding: 3pt 6pt; vertical-align: top; }
+tr:last-child td { border-bottom: 1.2px solid var(--ink); }
+td.n, th.n { text-align: right; }
+figure { margin: 8pt 0 12pt; break-inside: avoid; }
+figure img { width: 100%; display: block; border: 1px solid #e4e3dd; }
+figcaption { font-size: 9pt; font-weight: 700; margin: 4pt 0 0; }
+.note { font-size: 8.6pt; color: var(--muted); }
+.toc { columns: 2; column-gap: 18pt; font-size: 9.5pt; margin: 4pt 0 6pt; }
+.toc li { break-inside: avoid; }
+.pb { break-before: page; }
+.tag { display: inline-block; font-size: 8pt; font-weight: 700; padding: 0 5pt; border-radius: 3pt; background: #e8e7e1; margin-right: 3pt; }
+svg text { font-family: 'Apple SD Gothic Neo', sans-serif; }
+</style>
+</head>
+<body>
+
+<h1>조건별 금리 전이, 처음부터 쉽게</h1>
+<p class="sub">When Do US Yields Cross the Pacific? · 금융계량경제학 기말 프로젝트 · 처음 보는 사람을 위한 설명서 · 2026-11-20 기준 결과</p>
+
+<div class="box">
+<h3>1분 요약</h3>
+<ol>
+<li><b>질문</b>: 밤사이 미국 국채 금리가 움직이면 다음 날 한국 국채 금리도 따라 움직인다. 그런데 <b>어떤 날에 더 많이 따라 움직일까?</b></li>
+<li><b>평균</b>: 미국 금리가 1bp 오르면 다음 날 한국 금리는 약 0.29bp(3년물), 0.30bp(10년물) 오른다. 미국 움직임의 약 30%가 넘어온다.</li>
+<li><b>가장 뚜렷한 차이는 '충격의 성격'</b>이다. 미국 금리 상승이 주가 하락과 함께 오면(통화정책형) 10년물에서 0.38, 주가 상승과 함께 오면(성장형) 0.24가 넘어온다.</li>
+<li><b>미리 세운 가설 세 개는 대부분 예상과 반대이거나 약했다.</b> 외국인 선물 포지션이 쌓인 날에는 오히려 덜 넘어오고, 위험(VIX)이 클 때도 덜 넘어오는 경향이 있다.</li>
+<li><b>예측에 쓰기에는</b> 이 조건들이 평균 모형보다 크게 나아지게 하지 못한다. 전이 강도는 '어떤 날'보다 '어떤 시기'에 따라 더 크게 변한다.</li>
+</ol>
+</div>
+
+<p><b>목차</b></p>
+<ol class="toc">
+<li>무엇을 묻는 연구인가</li>
+<li>먼저 알아야 할 개념</li>
+<li>시간 맞추기: 가장 중요한 준비</li>
+<li>데이터</li>
+<li>가설: 언제 더 많이 넘어올까</li>
+<li>방법 ①: 회귀분석으로 전이 재기</li>
+<li>방법 ②: 결과를 믿을 수 있게 하는 장치</li>
+<li>결과</li>
+<li>결과를 어떻게 읽어야 하나</li>
+<li>한계</li>
+<li>용어집</li>
+<li>파일 지도와 재현 방법</li>
+</ol>
+
+<h2>1. 무엇을 묻는 연구인가</h2>
+<p>미국은 세계 금융의 중심이라 미국 국채 금리가 움직이면 다른 나라 금리도 따라 움직인다. 이것을 <b>금리 전이(spillover)</b>라고 한다. 한국도 마찬가지다. 한국은행 기준금리가 그대로여도, 밤사이 미국 금리가 크게 오르면 다음 날 아침 한국 국채 금리가 같이 오르는 일이 흔하다.</p>
+<p>평균적으로 얼마나 넘어오는지는 이미 많이 연구됐다. 이 연구는 한 걸음 더 들어가서 <b>"같은 크기의 미국 충격이라도 어떤 조건에서 더 많이(또는 덜) 넘어오는가"</b>를 묻는다. 예를 들면 이런 질문이다.</p>
+<ul>
+<li>한국은행이 곧 금리를 바꿀 것 같은 분위기일 때 더 많이 넘어올까?</li>
+<li>외국인이 한국 국채선물을 많이 사 둔 상태라면 미국 금리가 오를 때 한꺼번에 팔면서 더 많이 넘어올까?</li>
+<li>세계 금융시장이 불안할 때 더 많이 넘어올까?</li>
+</ul>
+<p>이 질문이 중요한 이유는 정책과 투자에 쓸 수 있기 때문이다. 어떤 조건에서 전이가 커지는지 알면 한국은행은 대외 충격에 대비할 때를, 투자자는 위험 관리할 때를 알 수 있다.</p>
+
+<h2>2. 먼저 알아야 할 개념</h2>
+<table>
+<tr><th style="width:24%">개념</th><th>뜻</th></tr>
+<tr><td>국채 금리(수익률)</td><td>정부에 돈을 빌려줄 때 받는 연 이자율. 국채 가격이 떨어지면 금리가 오른다. 3년물은 3년 뒤 갚는 국채, 10년물은 10년 뒤 갚는 국채다.</td></tr>
+<tr><td>bp (베이시스 포인트)</td><td>0.01%p. 금리가 3.00%에서 3.05%로 오르면 5bp 오른 것이다. 하루 금리 변화는 보통 몇 bp 수준이라 bp 단위로 잰다.</td></tr>
+<tr><td>전이 계수 β</td><td>미국 금리가 1bp 움직일 때 다음 날 한국 금리가 몇 bp 움직이는가. β = 0.3이면 미국 움직임의 30%가 넘어온다는 뜻이다.</td></tr>
+<tr><td>조건 변수</td><td>전이 계수를 크게 또는 작게 만들 것으로 의심되는 그날의 상황. 예: 시장 불안 정도(VIX), 외국인 포지션.</td></tr>
+<tr><td>상호작용</td><td>"조건에 따라 β가 달라진다"를 회귀식에 넣는 방법. 6절에서 설명한다.</td></tr>
+</table>
+<p>한국 3년물은 미국 2년물과, 한국 10년물은 미국 10년물과 짝을 지었다. 한국 3년물은 단기 금리 기대를 반영해 미국 2년물과 성격이 비슷하고, 10년물끼리는 만기가 같다.</p>
+
+<h2>3. 시간 맞추기: 가장 중요한 준비</h2>
+<p>한국과 미국은 시차가 있다. 한국 시장이 닫힌 뒤 미국 시장이 열리고, 미국 시장이 닫힌 뒤 다음 날 한국 시장이 열린다. 그래서 <b>"오늘 미국 금리 변화"와 "오늘 한국 금리 변화"를 그냥 같은 날짜로 묶으면 원인과 결과가 뒤섞인다.</b> 이 연구는 아래처럼 시간을 맞췄다.</p>
+
+<figure>
+<svg viewBox="0 0 720 210" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="한국 t일 마감, 미국 거래, 한국 t+1일 마감 순서를 보여 주는 시간선">
+  <line x1="20" y1="110" x2="700" y2="110" stroke="#0b0b0b" stroke-width="1.2"/>
+  <polygon points="700,110 692,106 692,114" fill="#0b0b0b"/>
+  <rect x="40" y="88" width="150" height="44" rx="4" fill="#eef4fc" stroke="#2a78d6"/>
+  <text x="115" y="106" font-size="12" text-anchor="middle" font-weight="700">한국 t일 장</text>
+  <text x="115" y="123" font-size="10.5" text-anchor="middle">종가 y(t)</text>
+  <rect x="270" y="88" width="170" height="44" rx="4" fill="#fdf1eb" stroke="#eb6834"/>
+  <text x="355" y="106" font-size="12" text-anchor="middle" font-weight="700">미국 장 (한국의 밤)</text>
+  <text x="355" y="123" font-size="10.5" text-anchor="middle">금리 변화 = 충격 s(t)</text>
+  <rect x="520" y="88" width="150" height="44" rx="4" fill="#eef4fc" stroke="#2a78d6"/>
+  <text x="595" y="106" font-size="12" text-anchor="middle" font-weight="700">한국 t+1일 장</text>
+  <text x="595" y="123" font-size="10.5" text-anchor="middle">종가 y(t+1)</text>
+  <line x1="190" y1="78" x2="190" y2="60" stroke="#52514e"/>
+  <text x="190" y="52" font-size="10.5" text-anchor="middle" fill="#52514e">조건 z(t)를 잰다</text>
+  <text x="190" y="38" font-size="10.5" text-anchor="middle" fill="#52514e">(이 시점에 알려진 값만)</text>
+  <path d="M115 140 Q355 200 595 140" fill="none" stroke="#2a78d6" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <text x="355" y="196" font-size="11.5" text-anchor="middle" fill="#2a78d6" font-weight="700">설명할 대상 Δy(t+1) = y(t+1) − y(t)</text>
+</svg>
+<figcaption>그림 A. 한 관측치의 시간 구조</figcaption>
+</figure>
+
+<ul>
+<li><b>설명할 대상 Δy(t+1)</b>: 한국 t일 종가에서 t+1일 종가까지의 금리 변화(bp).</li>
+<li><b>충격 s(t)</b>: 한국 t일 장이 끝난 뒤부터 t+1일 장이 열리기 전까지 끝난 미국 거래일들의 금리 변화 합(bp).</li>
+<li><b>조건 z(t)</b>: 한국 t일 장 마감 때 <b>이미 알려져 있던</b> 값. 미래 정보를 쓰면 결과가 부풀려지므로, 미국 변수는 그 전날 미국 값을 쓴다. 미국 연방기금금리처럼 하루 늦게 발표되는 값은 하루 더 앞의 값을 쓴다.</li>
+</ul>
+<div class="box">
+<h3>예시: 2026년 추석 연휴</h3>
+<p>한국은 2026-09-23(수) 장을 마치고 연휴에 들어가 2026-09-28(월)에 다시 열렸다. 그 사이 미국은 사흘 거래했고 미 2년물 금리는 합쳐서 10bp 올랐다. 이 연구는 이 사흘의 변화를 <b>충격 하나</b>로 묶고, 한국 3년물의 연휴 전후 변화(11.3bp)와 짝을 짓는다. 연휴 뒤 첫날이라는 표시(더미)도 따로 넣는다.</p>
+</div>
+
+<h2>4. 데이터</h2>
+<p>2010-01-04부터 2026-10-30까지 한국 거래일을 이어 붙인 <b>4,140개의 "하루 쌍"</b>을 분석했다. 모든 자료는 일별이다.</p>
+<table>
+<tr><th style="width:26%">자료</th><th>무엇에 쓰나</th><th style="width:28%">출처</th></tr>
+<tr><td>한국 국채 3·10년, 1년, CD 91일, 기준금리, 원/달러, KOSPI</td><td>설명 대상, H1 조건, 환율 조건</td><td>한국은행 ECOS (API 자동 수집)</td></tr>
+<tr><td>미국 국채 2·5·10년, 3개월, 연방기금금리, VIX, 회사채 스프레드, NASDAQ</td><td>충격, H3 조건, 충격 성격</td><td>미국 세인트루이스 연준 FRED</td></tr>
+<tr><td>외국인 국채선물 순매수(3·10년)</td><td>H2 조건</td><td>한국거래소 KRX (수동 다운로드)</td></tr>
+<tr><td>외국인 상장채권 보유 비중</td><td>H2 보조 조건</td><td>금융감독원 월별 보도자료 (자동 수집 후 표·문장 파싱)</td></tr>
+<tr><td>FOMC·금통위 날짜</td><td>통제용 더미</td><td>연준·한국은행 홈페이지</td></tr>
+<tr><td>미 10년 기간프리미엄(KW, ACM)</td><td>견고성 R2</td><td>FRED, 뉴욕 연준</td></tr>
+</table>
+<p class="note">자세한 전처리 규칙은 「조건별전이_데이터전처리.md」에 있다. 예: KRX VKOSPI 2019-04-10 값은 원자료 오류라 지웠고, 원/달러는 하루 늦게 반영되는 매매기준율 대신 15:30 종가를 썼다.</p>
+
+<figure>
+<img src="../figures/figure4_levels.png" alt="한국과 미국 국채 금리 수준">
+<figcaption>그림 B. 한·미 국채 금리 수준. 큰 흐름이 비슷하게 움직인다.</figcaption>
+</figure>
+
+<h2>5. 가설: 언제 더 많이 넘어올까</h2>
+<p>분석을 시작하기 전에 선행연구를 바탕으로 경로 세 개를 정하고, 각 경로를 대표하는 조건 변수 하나씩을 골랐다. <b>결과를 본 뒤 대표 변수를 바꾸지 않았다.</b> 결과에 맞춰 가설을 고치면 우연히 맞은 결과를 진짜처럼 보고하게 되기 때문이다.</p>
+<table>
+<tr><th style="width:15%">가설</th><th style="width:27%">대표 조건</th><th>직관</th><th style="width:15%">원래 예측</th></tr>
+<tr><td><b>H1</b> 정책 기대</td><td>|국고채 1년 − 기준금리|</td><td>1년 금리가 기준금리와 많이 벌어져 있으면 시장이 한국은행의 금리 변경을 예상한다는 뜻이다. 이렇게 기대가 흔들릴 때 미국 소식에 더 민감할 것이다.</td><td>전이 확대</td></tr>
+<tr><td><b>H2</b> 외국인 수급</td><td>외국인 3년 국채선물 누적 순매수 (최근 1년 대비 표준화)</td><td>외국인이 선물을 많이 사 둔 상태에서 미국 금리가 오르면 손실을 줄이려고 한꺼번에 팔 것이다. 그러면 한국 금리가 더 오른다.</td><td>미국 금리 상승일에 전이 확대</td></tr>
+<tr><td><b>H3</b> 글로벌 위험</td><td>log VIX (미국 주식시장 공포지수)</td><td>세계가 불안할 때 투자자들이 위험을 한꺼번에 줄이면서 각국 금리가 같이 움직일 것이다.</td><td>전이 확대</td></tr>
+</table>
+
+<h3>추가한 통제: 충격의 성격</h3>
+<p>선행연구(Hoek, Kamin & Yoldas 2022)는 미국 금리가 <b>왜</b> 올랐는지가 중요하다고 보였다.</p>
+<ul>
+<li><b>성장형</b>: 미국 경제가 좋아서 금리가 오르면 주가도 같이 오른다. 다른 나라에는 나쁜 소식만은 아니다.</li>
+<li><b>통화정책형</b>: 연준이 긴축할 것 같아서 금리가 오르면 주가는 떨어진다. 다른 나라 금융 여건을 직접 조인다.</li>
+</ul>
+<p>이 연구는 같은 밤 NASDAQ이 미국 금리와 <b>반대로</b> 움직이면 통화정책형(mon = 1), 같은 방향이면 성장형(mon = 0)으로 나눴다. 이것은 가설이 아니라 모든 모형에 넣는 통제 변수다. 그래서 세 가설의 결과가 "충격 종류가 달랐던 탓"으로 생기지 않게 한다. 이 변수는 효과를 한 번 확인한 뒤 넣었고, 그 사실을 보고서에 밝힌다.</p>
+
+<h3>보조 후보 (LASSO용 8개)</h3>
+<p>대표 변수 외에도 같은 경로를 다르게 잴 수 있는 변수가 있다. 선행연구 근거가 있는 것만 골라 8개로 정했다. 정책금리 차(한국 − 미국), 10년 선물 순매수, 외국인 채권 보유 비중, 미 회사채 신용 스프레드, 원/달러 20일 변화율, 그리고 대표 변수 3개다. 근거와 탈락 이유는 「조건별전이_변수확정_선행연구.md」에 있다.</p>
+
+<h2>6. 방법 ①: 회귀분석으로 전이 재기</h2>
+<h3>6-1. 기준 모형: 평균적으로 얼마나 넘어오나</h3>
+<div class="eq">Δy(t+1) = α + β₀ · s(t) + ρ · Δy(t) + (더미들) + 오차</div>
+<p>미국 충격 s를 가로축, 다음 날 한국 금리 변화 Δy를 세로축에 찍은 점들에 가장 잘 맞는 직선을 긋는다고 생각하면 된다. 그 직선의 <b>기울기 β₀</b>가 평균 전이 계수다. ρ·Δy(t)는 한국 금리 자체의 전날 움직임을 통제한다. 더미는 연휴 뒤 첫날, 미국 휴장일(s = 0), FOMC 발표, 금통위 결정일을 표시한다.</p>
+
+<h3>6-2. 조건부 모형: 조건에 따라 기울기가 바뀌나</h3>
+<div class="eq">Δy(t+1) = α + (β₀ + β₁·z₁ + β₂·z₂ + β₃·z₃ + β<sub>m</sub>·mon) · s(t) + (조건의 직접 효과) + ρ·Δy(t) + (더미, 추세) + 오차</div>
+<p>핵심은 괄호 안이다. 기울기가 고정된 β₀가 아니라 <b>조건 z에 따라 바뀌는 값</b>이 된다. z는 평균 0, 표준편차 1로 바꿔 놓았다. 그래서 β₃ = −0.03이면 "VIX가 평소보다 1 표준편차 높은 날에는 전이 계수가 0.03 작다"는 뜻이다. 이렇게 두 변수를 곱해 넣는 것을 <b>상호작용</b>이라고 한다.</p>
+
+<figure>
+<svg viewBox="0 0 720 230" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="조건이 낮을 때와 높을 때 기울기가 다른 두 직선">
+  <line x1="80" y1="200" x2="420" y2="200" stroke="#0b0b0b"/>
+  <line x1="250" y1="20" x2="250" y2="215" stroke="#0b0b0b"/>
+  <text x="420" y="218" font-size="11" text-anchor="end">미국 충격 s (bp)</text>
+  <text x="258" y="28" font-size="11">다음 날 한국 Δy (bp)</text>
+  <line x1="90" y1="173" x2="410" y2="27" stroke="#2a78d6" stroke-width="2.4"/>
+  <line x1="90" y1="160" x2="410" y2="40" stroke="#eb6834" stroke-width="2.4"/>
+  <text x="440" y="60" font-size="12" fill="#2a78d6" font-weight="700">조건이 낮은 날: 기울기 큼</text>
+  <text x="440" y="80" font-size="11" fill="#52514e">예) VIX 하위 20%: 10년물 β ≈ 0.33</text>
+  <text x="440" y="120" font-size="12" fill="#eb6834" font-weight="700">조건이 높은 날: 기울기 작음</text>
+  <text x="440" y="140" font-size="11" fill="#52514e">예) VIX 상위 20%: 10년물 β ≈ 0.28</text>
+  <text x="440" y="180" font-size="11" fill="#52514e">상호작용 계수 = 이 기울기 차이를</text>
+  <text x="440" y="196" font-size="11" fill="#52514e">조건 1 표준편차당으로 잰 값</text>
+</svg>
+<figcaption>그림 C. 상호작용의 뜻: 조건에 따라 직선의 기울기가 달라진다 (그림은 차이를 과장해서 그림)</figcaption>
+</figure>
+
+<p>세 대표 조건을 <b>한 식에 함께</b> 넣었다. 예를 들어 VIX가 높은 날은 외국인 포지션도 특정 방향일 수 있다. 함께 넣어야 각 조건의 효과를 다른 조건과 분리해 볼 수 있다.</p>
+<p>또 H2는 "미국 금리가 <b>오를 때</b> 외국인이 판다"는 가설이라 미국 금리 상승분(s⁺)과 하락분(s⁻)을 나눈 식에서 검정했다. 공식 검정은 <b>s⁺ × fut3</b>이다.</p>
+
+<h3>6-3. 왜 '추세'를 통제하나</h3>
+<p>전이 계수 자체가 2010년대 초에는 작았다가 최근에는 커졌다(그림 D). 그런데 천천히 움직이는 조건 변수(예: 외국인 보유 비중)가 우연히 같은 기간에 커졌다면, 그 조건이 전이를 키운 것처럼 보일 수 있다. 이것을 막으려고 시간 추세(trend)와 s × trend를 통제로 넣었다. 추세를 넣지 않은 결과도 함께 보고한다.</p>
+
+<h2>7. 방법 ②: 결과를 믿을 수 있게 하는 장치</h2>
+<table>
+<tr><th style="width:26%">장치</th><th>왜 필요한가</th></tr>
+<tr><td>Newey–West(HAC) 표준오차</td><td>금융 자료는 변동성이 몰려서 나타나고(조용한 시기와 요동치는 시기), 오차끼리 시간상 관련이 있을 수 있다. 일반 표준오차는 이때 너무 작게 나와 "유의하다"고 잘못 말하기 쉽다. HAC는 이 두 문제를 보정한다(시차 9일).</td></tr>
+<tr><td>Holm 다중검정 보정</td><td>가설 3개 × 만기 2개 = 검정 6번. 검정을 여러 번 하면 아무 효과가 없어도 하나쯤은 우연히 p &lt; 0.05가 나올 수 있다. Holm 보정은 검정 횟수만큼 기준을 엄격하게 한다. <b>이 연구는 Holm 보정 p &lt; 0.05를 "확실한 결과"로 본다.</b></td></tr>
+<tr><td>양측 검정</td><td>원래 예측은 "전이 확대(+)"였지만, 반대 방향(−)이 나올 이론적 이유도 있다. 예: 위험할 때 미국 국채는 안전자산 수요로 움직이고, 이 움직임은 한국으로 덜 넘어올 수 있다. 그래서 양쪽 방향을 모두 검정한다.</td></tr>
+<tr><td>5분위 분석</td><td>상호작용은 "조건이 커질수록 기울기가 일정하게 변한다"는 직선 관계를 가정한다. 조건을 5구간으로 나눠 구간별로 기울기를 따로 재면 이 가정 없이도 패턴을 확인할 수 있다.</td></tr>
+<tr><td>LASSO·Elastic Net</td><td>후보 조건 8개 중 무엇이 중요한지 <b>데이터가 스스로 고르게</b> 하는 기법이다. 덜 중요한 변수의 계수를 0으로 만든다. 사람이 고른 대표 변수와 같은 것을 고르는지 확인하는 용도로만 쓴다.</td></tr>
+<tr><td>표본외 예측</td><td>과거 1,000일로 모형을 추정해 바로 다음 날을 예측하고, 하루씩 옮기며 반복한다. 조건부 모형이 진짜 정보를 담고 있다면 처음 보는 날도 더 잘 맞혀야 한다. Clark–West, Giacomini–White 검정으로 비교한다.</td></tr>
+<tr><td>견고성 검사 R1–R11</td><td>설정을 바꿔도 결론이 유지되는지 본다. 다른 만기 충격, FOMC 전후 제외, 기간 나누기, 극단값 깎기, 연도별 전이 허용(R11) 등.</td></tr>
+<tr><td>GARCH-X</td><td>금리 <b>수준</b>이 아니라 <b>변동성</b>도 넘어오는지 본다. 미국 충격이 클수록 다음 날 한국 금리가 더 출렁이는지를 따로 추정한다.</td></tr>
+</table>
+
+<h2>8. 결과</h2>
+<h3>8-1. 평균 전이: 크고 확실하다</h3>
+<table>
+<tr><th>만기</th><th class="n">전이 계수 β₀</th><th class="n">t값</th><th class="n">미 금리 상승일</th><th class="n">미 금리 하락일</th></tr>
+<tr><td>한국 3년물 ← 미국 2년물</td><td class="n">0.29</td><td class="n">16.7</td><td class="n">0.29</td><td class="n">0.29</td></tr>
+<tr><td>한국 10년물 ← 미국 10년물</td><td class="n">0.30</td><td class="n">19.2</td><td class="n">0.28</td><td class="n">0.31</td></tr>
+</table>
+<p>t값이 2를 훨씬 넘으므로 우연일 가능성은 사실상 없다. 미국 금리가 오를 때와 내릴 때 넘어오는 정도도 같다.</p>
+<p>다만 전이 계수는 시기에 따라 크게 움직인다(그림 D). 3년물은 2013년 테이퍼 텐트럼 무렵 0.6까지 올랐다. 10년물은 2010–11년에 0에 가까웠다가 2023년 이후 0.4–0.5로 높아졌다. 구조변화 검정도 3년물은 2022-03-17, 10년물은 2012-08-09 무렵을 변화 시점으로 잡는다.</p>
+<figure>
+<img src="../figures/figure5_rolling_beta.png" alt="250일 롤링 전이 계수">
+<figcaption>그림 D. 최근 250거래일로 잰 전이 계수의 변화 (점선 = 전체 기간 평균)</figcaption>
+</figure>
+
+<h3>8-2. 충격의 성격: 가장 뚜렷한 차이</h3>
+<table>
+<tr><th>만기</th><th class="n">성장형 충격</th><th class="n">통화정책형 충격</th><th class="n">차이의 t값</th><th class="n">통화정책형 비율</th></tr>
+<tr><td>3년물</td><td class="n">0.24</td><td class="n">0.34</td><td class="n">2.2</td><td class="n">44%</td></tr>
+<tr><td>10년물</td><td class="n">0.24</td><td class="n">0.38</td><td class="n">4.4</td><td class="n">43%</td></tr>
+</table>
+<p>미국 금리 상승이 연준 긴축 신호처럼 주가 하락과 함께 오면 한국으로 훨씬 많이 넘어온다. 10년물은 약 60% 더 넘어온다. 선행연구가 신흥국 전체에서 보인 결과를 한국 일별 자료로 확인한 것이다. 이 변수는 VIX와 거의 관련이 없어서(상관 -0.02), 아래 결과와 따로 성립한다.</p>
+
+<h3>8-3. 세 가설: 대부분 예상과 반대이거나 약하다</h3>
+<table>
+<tr><th style="width:30%">가설</th><th class="n" style="width:14%">3년물</th><th class="n" style="width:22%">10년물</th><th>판정</th></tr>
+<tr><td>H1 정책 기대 (예측 +)</td><td class="n">0.007<br><span class="note">p 0.699</span></td><td class="n">-0.029<br><span class="note">p 0.028 · Holm 0.111</span></td><td>뚜렷하지 않음. 10년물은 오히려 음(−) 방향</td></tr>
+<tr><td>H2 외국인 수급, 미국 금리 상승일 (예측 +)</td><td class="n">-0.055<br><span class="note">p 0.053</span></td><td class="n"><b>-0.070</b><br><span class="note">p 0.006 · Holm <b>0.034</b></span></td><td><b>10년물에서 확실. 방향은 반대</b></td></tr>
+<tr><td>H3 글로벌 위험 (예측 +)</td><td class="n">-0.008<br><span class="note">p 0.667</span></td><td class="n">-0.029<br><span class="note">p 0.020 · Holm 0.100</span></td><td>10년물에서 반대 방향 경향. 보정 후 약함</td></tr>
+</table>
+<p class="note">계수 = 조건이 1 표준편차 높을 때 전이 계수의 변화. 10년물 평균 전이 계수가 약 0.3이니 −0.07은 꽤 큰 차이다.</p>
+<ul>
+<li><b>H2 (10년물)</b>: 외국인이 선물을 많이 사 둔 날 미국 금리가 오르면, 예상과 달리 <b>덜</b> 넘어온다. 이 연구에서 Holm 보정을 통과한 유일한 가설 결과다. 외국인의 대규모 순매수 포지션이 청산 압력보다 '한국 국채에 대한 강한 수요'를 나타냈을 가능성이 있다.</li>
+<li><b>H3 (10년물)</b>: VIX가 높을수록 덜 넘어오는 경향이다. VIX 하위 20%에서 전이 계수 0.33, 상위 20%에서 0.28이다. 5분위로 나눠 보면 1분위 0.31 → 5분위 0.20로 더 뚜렷하다(p 0.004). 하지만 충격의 성격을 통제하면 Holm 보정을 통과하지 못한다.</li>
+<li><b>3년물</b>: 세 조건 모두 의미 있는 차이가 없다.</li>
+</ul>
+<figure>
+<img src="../figures/figure6_coefficients.png" alt="상호작용 계수와 95% 구간">
+<figcaption>그림 E. 가설별 상호작용 계수와 95% 구간. 가로 막대가 0을 지나지 않으면 5%에서 유의하다.</figcaption>
+</figure>
+
+<h3>8-4. '어떤 날'의 효과인가, '어떤 시기'의 효과인가</h3>
+<p>그림 D처럼 전이 계수는 해마다 크게 출렁인다. 그래서 조건 효과가 다음 둘 중 어디서 나오는지 확인했다(견고성 R11). 연도마다 전이 계수가 따로 정해지도록 허용하고, <b>같은 해 안에서 날마다 다른 부분</b>만으로 조건 효과를 다시 쟀다.</p>
+<ul>
+<li>날마다 조건이 다를 때 그날 전이가 달라지는가 → <b>'어떤 날'의 효과</b></li>
+<li>조건이 높은 해에 마침 전이가 낮았던 것인가 → <b>'어떤 시기'의 효과</b></li>
+</ul>
+<table>
+<tr><th>10년물</th><th class="n">본 모형</th><th class="n">같은 해 안에서만 (R11)</th><th>뜻</th></tr>
+<tr><td>H2 외국인, 상승일</td><td class="n">-0.070</td><td class="n">-0.064 (p 0.011)</td><td>유지 → 날 단위 효과</td></tr>
+<tr><td>H3 VIX</td><td class="n">-0.029</td><td class="n">-0.016 (p 0.321)</td><td>사라짐 → 시기(국면) 효과</td></tr>
+</table>
+<p>또 기간을 나누면 경로가 바뀐다(R4). 2010–2019년에는 10년물 H1(정책 기대)이 강하게 음(-0.081)이었고, 2020–2026년에는 10년물 H3(VIX)가 강하게 음(-0.048)이었다.</p>
+
+<h3>8-5. 데이터가 직접 고르면 (LASSO)</h3>
+<p>전체 기간에서 LASSO는 후보 8개의 상호작용을 <b>하나도 고르지 않았다</b>. 추세와 충격 성격을 통제하고 나면, 조건이 추가로 설명하는 부분이 작다는 뜻이다. 1,000일씩 기간을 옮기며 고르게 하면 가끔 선택되는데, 10년물은 VIX(25%), 3년물은 외국인 3년 선물(25%)이 가장 자주 선택됐다. 사람이 미리 고른 대표 변수와 같다.</p>
+
+<h3>8-6. 예측에 도움이 되나</h3>
+<table>
+<tr><th style="width:34%">비교</th><th class="n" style="width:13%">3년물 R²</th><th class="n" style="width:15%">10년물 R²</th><th>읽는 법</th></tr>
+<tr><td>미국 충격 사용(M1) vs 아무것도 안 씀(M0)</td><td class="n">0.15</td><td class="n">0.20</td><td>미국 충격은 예측에 확실히 도움이 된다</td></tr>
+<tr><td>조건 추가(M2) vs M1</td><td class="n">-0.018</td><td class="n">-0.007<br><span class="note">CW p 0.020</span></td><td>10년물은 통계적으로만 낫고, 오차 크기는 거의 같다</td></tr>
+<tr><td>LASSO(M3) vs M1</td><td class="n">-0.012</td><td class="n">-0.013</td><td>오히려 나쁘다</td></tr>
+</table>
+<p class="note">표본외 R² = 1 − (새 모형 예측 오차 제곱합 / 기준 모형 예측 오차 제곱합). 양수면 새 모형이 낫다.</p>
+
+<h3>8-7. 변동성도 넘어온다</h3>
+<p>미국 충격이 클수록 다음 날 한국 금리 변동성이 커진다. 10년물은 확실하고(p <0.001), 3년물은 약하게(p 0.014) 나타난다. 크기와 방향 외에 '출렁임'도 넘어온다는 뜻이다.</p>
+
+<h2>9. 결과를 어떻게 읽어야 하나</h2>
+<ol>
+<li><b>무엇이 넘어오느냐가 중요하다.</b> 한국 금리는 미국의 <b>통화정책 기대 변화</b>에 특히 민감하다. 같은 1bp라도 연준 긴축 신호로 오른 1bp가 더 많이 넘어온다.</li>
+<li><b>위험이 클 때 오히려 덜 넘어온다.</b> 예상과 반대다. 위험회피 국면의 미 국채 금리 움직임에는 안전자산 수요나 기간프리미엄 변화가 많이 섞여 있고, 이런 움직임은 한국으로 덜 넘어온다는 해석이 가능하다(견고성 R2에서 기간프리미엄 부분이 VIX에 따라 약해짐). 다만 이 효과는 '위험한 날'보다 '위험한 시기'의 효과이고, 보정 후에는 약하다.</li>
+<li><b>외국인 포지션은 날 단위로 전이를 줄인다.</b> 선물 순매수가 쌓인 날 미국 금리가 오르면 10년물 전이가 작다. 같은 해 안에서도 유지되는 유일한 조건 효과다.</li>
+<li><b>연구 질문에 대한 답</b>: 미국 금리 전이는 크고 안정적이다. 그 강도는 '그날의 조건'보다 '시기'와 '충격의 종류'에 따라 더 크게 달라진다. 조건부 모형이 예측을 크게 개선하지 못하는 것도 같은 결론을 가리킨다.</li>
+</ol>
+<div class="box warn">
+<h3>예상과 반대인 결과를 어떻게 보나</h3>
+<p>가설이 틀린 것은 실패가 아니다. 미리 정한 가설을 미리 정한 방법으로 검정했고, 결과를 있는 그대로 보고했다. 연구에서 신뢰할 수 있는 것은 이런 결과다. 반대로, 결과를 보고 가설이나 변수를 바꿨다면 신뢰할 수 없다. 대표 변수를 바꾸지 않은 이유도 여기에 있다.</p>
+</div>
+
+<h2>10. 한계</h2>
+<ul>
+<li><b>상관이지 인과가 아니다.</b> "VIX가 높으면 전이가 작다"는 함께 나타난다는 뜻이다. VIX가 전이를 줄인다고 단정할 수 없다.</li>
+<li><b>대용치의 한계.</b> 외국인 선물 '누적 순매수'는 실제 미결제 포지션이 아니라 추정치다. 환헤지 비용의 이상적 변수(스왑레이트)는 일별 자료를 구하지 못했다.</li>
+<li><b>충격 성격의 구분이 거칠다.</b> 주가와 금리의 같은 날 부호만 보므로, 둘이 다른 이유로 움직인 날도 섞인다.</li>
+<li><b>충격 성격 변수는 효과를 확인한 뒤 넣었다.</b> 선행연구가 근거라도 이 사실은 보고서에 밝혀야 한다.</li>
+<li><b>기간프리미엄 분해(R2)는 모형 추정치</b>라 해석에 한계가 있다.</li>
+</ul>
+
+<h2>11. 용어집</h2>
+<table>
+<tr><th style="width:24%">용어</th><th>쉬운 뜻</th></tr>
+<tr><td>회귀분석</td><td>여러 점에 가장 잘 맞는 선(또는 면)을 찾아, 한 변수가 다른 변수와 어떻게 함께 움직이는지 재는 방법</td></tr>
+<tr><td>계수, t값, p값</td><td>계수는 효과의 크기다. t값은 그 크기가 불확실성에 비해 얼마나 큰지 나타낸다(대략 |t| &gt; 2면 유의). p값은 "실제 효과가 0인데 이만큼의 결과가 우연히 나올 확률"이다. 작을수록 우연이 아닐 가능성이 크다.</td></tr>
+<tr><td>표준화(z점수)</td><td>평균을 빼고 표준편차로 나눠 단위를 없앤 값. 서로 다른 조건의 효과를 같은 잣대로 비교할 수 있다.</td></tr>
+<tr><td>250일 이동 z점수</td><td>최근 1년(약 250거래일)의 평균과 표준편차로 표준화한 값. 계속 쌓이기만 하는 누적 순매수 같은 값을 '최근 대비 많은지 적은지'로 바꾼다.</td></tr>
+<tr><td>단위근 / I(1)</td><td>값이 평균으로 돌아오지 않고 떠돌아다니는 성질. 이런 변수를 그대로 회귀에 넣으면 가짜 관계가 나올 수 있어서, 해당 조건은 250일 z점수로 바꿨다(ADF·KPSS 검정으로 판정).</td></tr>
+<tr><td>VIX</td><td>S&amp;P 500 옵션 가격으로 계산한 미국 주식시장의 예상 변동성. '공포지수'라고도 한다.</td></tr>
+<tr><td>테이퍼 텐트럼</td><td>2013년 연준이 채권 매입 축소를 예고하자 세계 금리가 급등한 사건</td></tr>
+<tr><td>기간프리미엄</td><td>장기 채권을 들고 있는 위험에 대한 추가 보상. 장기 금리 = 미래 단기 금리 기대 + 기간프리미엄</td></tr>
+<tr><td>Clark–West / Giacomini–White</td><td>두 예측 모형 중 어느 쪽이 처음 보는 자료를 더 잘 맞히는지 검정하는 방법</td></tr>
+<tr><td>GARCH</td><td>변동성이 몰려 나타나는 현상(조용하다가 한꺼번에 출렁임)을 표현하는 모형. GARCH-X는 외부 변수(미국 충격)를 변동성 식에 넣은 것</td></tr>
+</table>
+
+<h2>12. 파일 지도와 재현 방법</h2>
+<table>
+<tr><th style="width:38%">파일</th><th>내용</th></tr>
+<tr><td>code/01_collect_data.R</td><td>데이터 수집(ECOS API 키 필요). 결과는 data/Data_team.csv</td></tr>
+<tr><td>code/02_analysis.R</td><td>분석 전체. 결과는 output/(표 csv, 그림 png, RData)</td></tr>
+<tr><td>code/03_results_report.R</td><td>분석결과_정리.pdf(전문가용 상세 결과)</td></tr>
+<tr><td>code/04_explainer.R</td><td>이 문서(연구_쉬운설명.pdf). 숫자는 분석 결과에서 자동으로 채운다</td></tr>
+<tr><td>code/00_build_submission.R</td><td>제출용 단일 R 파일(submission/)</td></tr>
+<tr><td>조건별전이_연구개요_확정.md</td><td>연구 설계 전체와 바뀐 점 기록</td></tr>
+<tr><td>조건별전이_데이터전처리.md</td><td>데이터 수집·정리 규칙</td></tr>
+<tr><td>조건별전이_변수확정_선행연구.md</td><td>변수별 선행연구 근거와 확정 과정</td></tr>
+<tr><td>data_raw/</td><td>KRX·금감원 원자료와 수집 스크립트</td></tr>
+</table>
+<div class="eq">Rscript code/02_analysis.R &nbsp;&nbsp;# 분석 (몇 분)<br>Rscript code/03_results_report.R &nbsp;&nbsp;# 상세 결과 PDF<br>Rscript code/04_explainer.R &nbsp;&nbsp;# 이 문서</div>
+
+</body>
+</html>
