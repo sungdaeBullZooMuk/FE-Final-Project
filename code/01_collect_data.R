@@ -226,7 +226,8 @@ fred <- list(
   fred_get("VIXCLS",      "vix"),
   fred_get("DTWEXBGS",    "usd_idx"),
   fred_get("BAA10Y",      "baa_spread"),
-  fred_get("THREEFYTP10", "tp_kw")
+  fred_get("THREEFYTP10", "tp_kw"),
+  fred_get("NASDAQCOM",   "nasdaq")       # shock type (Hoek, Kamin & Yoldas 2022)
 )
 
 message("ACM ...")
@@ -295,7 +296,8 @@ cols <- c("date", "kr_open", "us_open",
           "kr1y", "cd91", "base_rate", "effr", "us3m",              # H1, H2 inputs
           "fut3_net", "fut10_net", "fgn_share",                     # H2
           "vix", "krw_usd", "vkospi", "usd_idx", "baa_spread",      # H3
-          "tp_kw", "tp_acm", "kospi", "fomc_day", "mpc_day", "next_mpc")  # controls
+          "tp_kw", "tp_acm", "kospi", "nasdaq",                     # controls
+          "fomc_day", "mpc_day", "next_mpc")
 df <- df[order(df$date), cols]
 
 # ---- checks ---------------------------------------------------------------------

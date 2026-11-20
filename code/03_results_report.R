@@ -42,32 +42,44 @@ rq <- function(chk, tg, term, col) { v <- rbx[rbx$check == chk & rbx$target == t
 r10 <- function(tg, term, col) rq("R10 add s x |s|", tg, term, col)
 r11 <- function(tg, term, col) rq("R11 within-year (s x year)", tg, term, col)
 n_pairs <- nrow(A); per <- paste(format(min(A$date)), "~", format(max(A$date1)))
+t2b <- res$table2b; sb <- function(tg, col) t2b[t2b$target == tg, col]
+qb <- function(tg, h, q) res$quintiles$beta[res$quintiles$target == tg & res$quintiles$hyp == h & res$quintiles$quintile == q]
+r2v <- function(chk, term, col) { r <- res$robustness; r[r$check == chk & r$term == term, col][1] }
+n_cand <- length(unique(res$table_lasso$interaction)); n_win <- length(unique(res$heatmap$end[res$heatmap$target == "k3"]))
+n_sel <- sum(res$table_lasso$lasso != 0 | res$table_lasso$enet != 0)
 
 # ---- sections ----------------------------------------------------------------------
 key <- paste0("<div class='key'><h3>핵심 결과</h3><ol>",
   "<li><b>평균 전이는 크고 안정적이다.</b> 미국 금리가 1bp 오르면 다음 날 국고채 3년물은 ", f(b0["k3"], 2), "bp, 10년물은 ",
   f(b0["k10"], 2), "bp 오른다(HAC t = ", f(t2$t_beta0[1], 1), ", ", f(t2$t_beta0[2], 1), "). 상승·하락 충격의 크기 차이는 없다.</li>",
-  "<li><b>10년물에서 조건에 따른 차이가 있지만, 방향은 예측과 반대다.</b> VIX가 높을수록(H3, ", f(g3("k10", "trend", "s:vix", "est")),
-  ", Holm p = ", fp(g3("k10", "trend", "s:vix", "p_holm")), "), 외국인 3년 선물 순매수가 쌓인 상태에서 미국 금리가 오를수록(H2, ",
-  f(g3("k10", "trend", "sp:fut3_cum", "est")), ", Holm p = ", fp(g3("k10", "trend", "sp:fut3_cum", "p_holm")), ") 전이가 <b>약해진다</b>.</li>",
+  "<li><b>충격의 성격이 전이를 가른다.</b> 미국 금리와 주가가 반대로 움직인 날(통화정책형 충격, Hoek, Kamin & Yoldas 2022)은 같이 움직인 날(성장형)보다 더 많이 넘어온다. ",
+  "10년물 전이 계수는 성장형 ", f(sb("k10", "beta_growth"), 2), ", 통화정책형 ", f(sb("k10", "beta_monetary"), 2), "(차이 t = ", f(sb("k10", "t_diff"), 1), "), 3년물은 ",
+  f(sb("k3", "beta_growth"), 2), ", ", f(sb("k3", "beta_monetary"), 2), "(t = ", f(sb("k3", "t_diff"), 1), ")이다.</li>",
+  "<li><b>10년물에서 조건에 따른 차이가 있지만, 방향은 예측과 반대다.</b> 외국인 3년 선물 순매수가 쌓인 상태에서 미국 금리가 오를수록(H2, ",
+  f(g3("k10", "trend", "sp:fut3_cum", "est")), ", Holm p = ", fp(g3("k10", "trend", "sp:fut3_cum", "p_holm")), ") 전이가 <b>약해진다</b>. VIX가 높을 때도 약해지지만(H3, ",
+  f(g3("k10", "trend", "s:vix", "est")), ", p = ", fp(g3("k10", "trend", "s:vix", "p")), "), 충격 성격을 통제하면 Holm 보정 후에는 유의하지 않다(Holm p = ",
+  fp(g3("k10", "trend", "s:vix", "p_holm")), ").</li>",
   "<li><b>두 결과는 성격이 다르다.</b> 연도별 전이 계수를 따로 두고 같은 해 안의 날별 차이만 보면(R11), H2(s⁺)는 유지되지만(",
   f(r11("k10", "sp:fut3_cum", "est")), ", p ", fp(r11("k10", "sp:fut3_cum", "p")), ") VIX 효과는 약해진다(", f(r11("k10", "s:vix", "est")), ", p ",
-  fp(r11("k10", "s:vix", "p")), "). <b>H2는 '어떤 날'의 효과, H3는 '어떤 시기'의 효과</b>다. 충격 크기의 비선형(R10)을 통제하면 VIX 효과는 오히려 강해진다.</li>",
+  fp(r11("k10", "s:vix", "p")), "). <b>H2는 '어떤 날'의 효과, H3는 '어떤 시기'의 효과</b>다. 충격 크기의 비선형(R10)을 통제하면 VIX 효과는 오히려 강해진다(", f(r10("k10", "s:vix", "est")), ", t ", f(r10("k10", "s:vix", "t"), 1), ").</li>",
   "<li><b>3년물은 세 조건 모두에서 전이가 거의 달라지지 않는다.</b> Holm 보정 후 유의한 항이 없다.</li>",
   "<li><b>조건부 모형의 예측 개선은 10년물에서만, 작게 나타난다.</b> Clark–West p = ", fp(oo("k10", "M2 vs M1", "cw_p")),
-  "이지만 MSFE는 거의 같다. LASSO 모형(M3)은 기준 모형보다 못하다.</li>",
+  "이지만 MSFE는 거의 같다. LASSO 모형(M3)은 기준 모형보다 못하다. 전체 표본 LASSO는 상호작용을 하나도 고르지 않는다.</li>",
   "<li><b>미국 충격은 다음 날 국고채 변동성도 키운다.</b> GARCH-X의 c는 10년물 ", f(gc("k10", "est"), 2), "(우도비 p = ", fp(gc("k10", "lr_p")),
   "), 3년물 ", f(gc("k3", "est"), 2), "(p = ", fp(gc("k3", "lr_p")), ")이다.</li></ol></div>")
 
 s1 <- paste0("<h2>1. 연구 설계 요약</h2>",
   P("<b>연구 질문</b>: 간밤 미국 금리 충격이 다음 날 국고채로 더 세게 넘어오는 날은 어떤 조건일 때인가?"),
-  P("<b>모형</b>: Δy(t+1) = α + (β<sub>0</sub> + Σ<sub>j</sub> β<sub>j</sub> z<sub>j</sub>(t))·s(t) + Σ<sub>j</sub> γ<sub>j</sub> z<sub>j</sub>(t) + ρΔy(t) + δ′D(t) + [trend, s×trend] + ε. ",
+  P("<b>모형</b>: Δy(t+1) = α + (β<sub>0</sub> + Σ<sub>j</sub> β<sub>j</sub> z<sub>j</sub>(t) + β<sub>m</sub> mon(t))·s(t) + Σ<sub>j</sub> γ<sub>j</sub> z<sub>j</sub>(t) + γ<sub>m</sub> mon(t) + ρΔy(t) + δ′D(t) + [trend, s×trend] + ε. ",
     "Δy는 한국 t일 종가 → t+1일 종가 변화(bp), s(t)는 한국 t일 마감 뒤 t+1일 개장 전에 끝난 미국 거래일 변화의 합(bp), z는 t일 마감 때 알려진 조건(표준화)이다. ",
+    "mon(t)는 충격의 성격이다. s(t)와 같은 미국 거래일들의 NASDAQ 수익률이 s(t)와 부호가 반대면 1(통화정책형), 같으면 0(성장형)이다. 가설이 아니라 통제로 넣었다. ",
     "표준오차는 Newey–West(시차 9)이다."),
   html_table(data.frame(가설 = c("H1 기대 경로", "H2 수급 경로", "H3 위험 경로"),
                         `대표 조건` = c("|국고채 1년 − 기준금리|", "외국인 3년 국채선물 누적 순매수 (250일 z)", "log VIX"),
                         `원래 예측` = c("전이 확대 (+)", "미국 금리 상승일 전이 확대 (+)", "전이 확대 (+)"), check.names = FALSE),
              "표 A. 가설과 대표 조건 변수", align = c("left", "left", "left")),
+  P("<b>변수 확정</b>: 대표 변수 3개는 결과를 보기 전에 정했고 바꾸지 않았다. 선행연구 검토(「조건별전이_변수확정_선행연구.md」)에 따라 LASSO 후보를 13개에서 ", n_cand,
+    "개(|kr1y_gap|, policy_gap, fut3_cum, fut10_cum, fgn_share, log VIX, baa_spread, krw_chg20)로 줄였고, 충격 성격(mon)을 통제로 추가했다. mon의 효과는 넣기 전에 한 번 확인했다."),
   P("<b>미리 정한 설정</b>: 모든 검정은 양측이다. 전이 계수가 기간에 따라 커지므로 가설 모형과 LASSO에는 trend와 s×trend를 통제로 넣었다(추세 없는 결과도 함께 보고). ",
     "단위근 검정에서 I(1)로 나온 조건 ", paste(res$transformed, collapse = ", "), "은 250일 이동 z점수로 바꿨다. 다중검정은 가설 3개 × 만기 2개 = 6개에 Holm 보정을 한다."))
 
@@ -90,12 +102,21 @@ s3 <- paste0("<h2>3. 평균 전이 (기준 모형)</h2>",
     "10년물은 2010–11년 0에 가까웠다가 2023년 이후 0.4–0.5로 높아졌다. 구조변화 sup-Wald 검정은 3년물 ", format(res$supwald$break_date[1]),
     "(p ", fp(res$supwald$p[1]), "), 10년물 ", format(res$supwald$break_date[2]), "(p ", fp(res$supwald$p[2]),
     ")을 변화 시점으로 잡는다. 10년물 시점은 탐색 구간의 시작점이라 2010–11년의 낮은 전이를 반영한 것으로 본다."),
-  fig("figure5_rolling_beta.png", "그림 5. 250일 롤링 전이 계수 (점선 = 전체 표본)"))
+  fig("figure5_rolling_beta.png", "그림 5. 250일 롤링 전이 계수 (점선 = 전체 표본)"),
+  "<h3>3-1. 충격의 성격</h3>",
+  html_table(data.frame(만기 = tg_name[t2b$target], `통화정책형 비율` = paste0(f(100 * t2b$share_mon, 1), "%"), `성장형 β` = f(t2b$beta_growth),
+                        `통화정책형 β` = paste0(f(t2b$beta_monetary), " (", f(t2b$se_monetary), ")"), 차이 = paste0(f(t2b$diff), st(t2b$p_diff)),
+                        `차이 t` = f(t2b$t_diff, 1), `mon–VIX 상관` = f(t2b$corr_mon_vix, 3), check.names = FALSE),
+             "표 2-1. 성장형(mon = 0) vs 통화정책형(mon = 1) 충격의 전이",
+             "기준 모형에 mon과 s × mon을 추가. 통화정책형 = 미국 금리와 NASDAQ이 같은 기간에 반대로 움직임. 괄호는 HAC 표준오차(델타법). *** p<0.01, ** p<0.05.", cls = "small"),
+  P("미국 금리 상승이 주가 하락과 함께 오면(통화정책형) 한국으로 더 많이 넘어온다. 10년물은 차이가 ", f(sb("k10", "diff"), 2), "로 성장형 대비 약 ",
+    f(100 * sb("k10", "diff") / sb("k10", "beta_growth"), 0), "% 크다. Hoek, Kamin & Yoldas(2022)가 신흥국에서 보인 결과와 같은 방향이다. ",
+    "mon은 VIX와 거의 상관이 없어서, 아래 조건 효과와 따로 성립한다. 가설 모형에도 mon과 s × mon을 통제로 넣었다."))
 
 # table 3
-rows <- data.frame(term = c("s:abs_kr1y_gap", "s:fut3_cum", "sp:fut3_cum", "sm:fut3_cum", "s:vix"),
-                   name = c("H1  s × |kr1y_gap|", "H2  s × fut3 (대칭)", "H2  s⁺ × fut3 (미 상승일)", "H2  s⁻ × fut3 (미 하락일)", "H3  s × log VIX"),
-                   pred = c("+", "", "+", "", "+"))
+rows <- data.frame(term = c("s:abs_kr1y_gap", "s:fut3_cum", "sp:fut3_cum", "sm:fut3_cum", "s:vix", "s:mon"),
+                   name = c("H1  s × |kr1y_gap|", "H2  s × fut3 (대칭)", "H2  s⁺ × fut3 (미 상승일)", "H2  s⁻ × fut3 (미 하락일)", "H3  s × log VIX", "통제  s × mon (충격 성격)"),
+                   pred = c("+", "", "+", "", "+", ""))
 mk3 <- function(spec) do.call(cbind, lapply(c("k3", "k10"), function(tg) {
   x <- sapply(rows$term, function(tm) { r <- t3[t3$target == tg & t3$spec == spec & t3$term == tm, ]
     c(paste0(f(r$est), st(r$p)), paste0("(", f(r$se), ")"), fp(r$p), ifelse(is.na(r$p_holm), "", fp(r$p_holm))) })
@@ -112,42 +133,50 @@ s4 <- paste0("<h2>4. 가설 검정</h2>",
   P("세 대표 조건을 한 식에 함께 넣어 경쟁시켰다. 계수는 조건이 1 표준편차 높을 때 전이 계수가 얼마나 바뀌는지다(기준 전이 계수: 3년물 ",
     f(beta_main["k3"]), ", 10년물 ", f(beta_main["k10"]), "). Holm 보정은 H1, H2(s⁺), H3 × 2개 만기의 6개 검정에 적용했다."),
   html_table(t3a, "표 3. 가설 모형: 상호작용 계수 (본 설정: trend, s×trend 통제)",
-             "괄호는 Newey–West 표준오차. 양측 p값. *** p<0.01, ** p<0.05, * p<0.1. H2의 공식 검정은 s⁺ × fut3이다(연구개요 4-2).", cls = "small",
+             "괄호는 Newey–West 표준오차. 양측 p값. *** p<0.01, ** p<0.05, * p<0.1. H2의 공식 검정은 s⁺ × fut3이다(연구개요 4-2). mon은 0/1 더미라 s × mon은 통화정책형 충격일 때 전이 계수의 차이다.", cls = "small",
              header = H3, group = G3),
   html_table(t3b, "표 3-1. 같은 모형, 추세 통제 없음 (비교용)", cls = "small", header = H3, group = G3),
   P("<b>읽는 법</b>"),
-  "<ul><li><b>10년물 H3</b>: VIX가 1 표준편차 높으면 전이 계수가 ", f(g3("k10", "trend", "s:vix", "est")), " 줄어든다. 예측(+)과 반대 방향이고 Holm 보정 후에도 5%에서 유의하다. ",
-  "VIX 하위 20%에서 전이 계수는 ", f(esz("k10", "H3", 0.2)), ", 상위 20%에서 ", f(esz("k10", "H3", 0.8)), "이다.</li>",
-  "<li><b>10년물 H2</b>: 외국인 선물 순매수가 많이 쌓인 상태(z 높음)에서 미국 금리가 오르면 전이가 ", f(g3("k10", "trend", "sp:fut3_cum", "est")),
-  " 작아진다. 청산 매도로 전이가 커진다는 예측과 반대다. 미국 금리 하락일(s⁻)에는 차이가 없다.</li>",
-  "<li><b>H1</b>: 10년물에서 음(−)의 방향이지만 10% 수준에서만 유의하고(p ", fp(g3("k10", "trend", "s:abs_kr1y_gap", "p")), "), 3년물은 0에 가깝다.</li>",
-  "<li><b>3년물</b>: s⁺ × fut3만 보정 전 5% 유의(p ", fp(g3("k3", "trend", "sp:fut3_cum", "p")), ")이고, Holm 보정 후에는 유의하지 않다.</li>",
-  "<li>추세 통제를 빼도 결론은 같다(표 3-1). 다만 10년물 H2(s⁺)는 추세를 빼면 Holm p가 ", fp(g3("k10", "notrend", "sp:fut3_cum", "p_holm")), "로 약해진다.</li></ul>",
+  "<ul><li><b>10년물 H2</b>: 외국인 선물 순매수가 많이 쌓인 상태(z 높음)에서 미국 금리가 오르면 전이가 ", f(g3("k10", "trend", "sp:fut3_cum", "est")),
+  " 작아진다(Holm p ", fp(g3("k10", "trend", "sp:fut3_cum", "p_holm")), "). 청산 매도로 전이가 커진다는 예측과 반대다. 미국 금리 하락일(s⁻)에는 차이가 없다. Holm 보정 후 유의한 유일한 결과다.</li>",
+  "<li><b>10년물 H3</b>: VIX가 1 표준편차 높으면 전이 계수가 ", f(g3("k10", "trend", "s:vix", "est")), " 줄어든다(p ", fp(g3("k10", "trend", "s:vix", "p")),
+  ", Holm p ", fp(g3("k10", "trend", "s:vix", "p_holm")), "). 예측(+)과 반대 방향이다. 충격 성격을 통제하기 전에는 Holm 보정 후에도 5%에서 유의했으나(−0.034, Holm p 0.044), 통제 후 약해졌다. ",
+  "VIX 하위 20%에서 전이 계수는 ", f(esz("k10", "H3", 0.2)), ", 상위 20%에서 ", f(esz("k10", "H3", 0.8)), "이다(충격 성격은 표본 평균).</li>",
+  "<li><b>H1</b>: 10년물에서 음(−)의 방향이다(p ", fp(g3("k10", "trend", "s:abs_kr1y_gap", "p")), ", Holm p ", fp(g3("k10", "trend", "s:abs_kr1y_gap", "p_holm")), "). 3년물은 0에 가깝다.</li>",
+  "<li><b>3년물</b>: s⁺ × fut3이 보정 전 p ", fp(g3("k3", "trend", "sp:fut3_cum", "p")), "이고, Holm 보정 후에는 유의하지 않다.</li>",
+  "<li><b>충격 성격(통제)</b>: 가설 모형 안에서도 s × mon은 10년물 ", f(g3("k10", "trend", "s:mon", "est")), "(p ", fp(g3("k10", "trend", "s:mon", "p")), "), 3년물 ",
+  f(g3("k3", "trend", "s:mon", "est")), "(p ", fp(g3("k3", "trend", "s:mon", "p")), ")이다.</li>",
+  "<li>추세 통제를 빼면(표 3-1) 10년물 H2(s⁺)는 Holm p가 ", fp(g3("k10", "notrend", "sp:fut3_cum", "p_holm")), ", H3는 ", fp(g3("k10", "notrend", "s:vix", "p_holm")),
+  "로 둘 다 10% 근처다. 방향은 같다.</li></ul>",
   fig("figure6_coefficients.png", "그림 6. 상호작용 계수와 95% HAC 구간 (채운 점 = 본 설정, 빈 점 = 추세 없음)"),
   html_table(esd[esd$만기 == tg_short["k10"], ], "표 3-2. 경제적 크기: 조건 하위·상위 20%에서의 10년물 전이 계수 (델타법 95% 구간)", cls = "small"),
   fig("figure1_quintiles.png", "그림 1. 조건 5분위별 전이 계수 (선형 가정 없이)"),
   html_table(data.frame(만기 = tg_short[qp$target], 가설 = qp$hyp, 조건 = qp$condition, `b5 − b1 = 0 p` = fp(qp$p_q5_q1), check.names = FALSE),
              "표 3-3. 5분위 검정: 최상위 분위와 최하위 분위 전이 계수가 같은가", cls = "small"),
-  P("5분위 결과도 같은 방향이다. 10년물은 VIX가 높을수록 전이 계수가 1분위 0.35에서 5분위 0.24로 대체로 줄고(p ",
-    fp(qp$p_q5_q1[qp$target == "k10" & qp$hyp == "H3"]), "), |kr1y_gap|에서도 같은 모양이다. 3년물은 분위별로 들쭉날쭉하고 체계적인 차이가 없다."))
+  P("5분위 결과는 선형 상호작용보다 뚜렷하다. 10년물은 VIX가 높을수록 전이 계수가 1분위 ", f(qb("k10", "H3", 1), 2), "에서 5분위 ", f(qb("k10", "H3", 5), 2), "(으)로 줄고(p ",
+    fp(qp$p_q5_q1[qp$target == "k10" & qp$hyp == "H3"]), "), |kr1y_gap|에서도 ", f(qb("k10", "H1", 1), 2), "에서 ", f(qb("k10", "H1", 5), 2), "(으)로 줄어든다(p ",
+    fp(qp$p_q5_q1[qp$target == "k10" & qp$hyp == "H1"]), "). 3년물은 분위별로 들쭉날쭉하고 체계적인 차이가 없다."))
 
 tl <- res$table_lasso; tl <- tl[tl$lasso != 0 | tl$enet != 0, ]
 hf <- res$heat_freq; hf <- hf[order(-hf$selected), ]; hf <- hf[hf$selected > 0.05, ]
 s5 <- paste0("<h2>5. 데이터 기반 확인 (LASSO·Elastic Net)</h2>",
-  P("2012-05-31 이후 표본에서 조건 13개의 상호작용에만 벌점을 주고 BIC로 λ를 골랐다. 사후 추론은 하지 않고 어떤 경로가 선택되는지만 본다."),
-  html_table(data.frame(만기 = tg_short[tl$target], `선택된 상호작용` = tl$interaction, LASSO = f(tl$lasso, 4), `Elastic Net (α = 0.5)` = f(tl$enet, 4), check.names = FALSE),
-             "표 4. 전체 표본에서 선택된 상호작용 (나머지는 모두 0)"),
-  P("전체 표본에서는 신용 스프레드(baa_spread, 250일 z)가 두 만기 모두 음(−)으로 선택됐다. 위험이 클 때 전이가 약하다는 H3 결과와 같은 방향이다. 3년물에서는 cd_gap(+)도 선택됐다. 대표 변수(|kr1y_gap|, fut3, VIX)는 선택되지 않았다. ",
-    "LASSO와 Elastic Net의 결과가 같아서, 상관된 조건이 함께 선택되는 현상은 없다."),
-  fig("figure2_heatmap.png", "그림 2. 1,000일 롤링 창별 LASSO 선택 (20일 간격, 126개 창)"),
+  P("2012-05-31 이후 표본에서 조건 ", n_cand, "개의 상호작용에만 벌점을 주고 BIC로 λ를 골랐다. s, Δy(t), 더미, mon, s × mon, trend, s × trend와 조건 주효과는 벌점 없이 넣었다(설명변수 ",
+    res$lasso$k3$p, "개). 사후 추론은 하지 않고 어떤 경로가 선택되는지만 본다."),
+  if (n_sel > 0) html_table(data.frame(만기 = tg_short[tl$target], `선택된 상호작용` = tl$interaction, LASSO = f(tl$lasso, 4), `Elastic Net (α = 0.5)` = f(tl$enet, 4), check.names = FALSE),
+             "표 4. 전체 표본에서 선택된 상호작용 (나머지는 모두 0)") else "",
+  P(if (n_sel == 0) "<b>전체 표본에서는 두 만기 모두, LASSO와 Elastic Net 모두 상호작용을 하나도 고르지 않았다</b>(표 4 생략). BIC 기준으로는 추세와 충격 성격을 통제한 뒤 조건 상호작용이 추가하는 설명력이 벌점보다 작다. 가설 모형에서 유의한 효과(10년물 H2 s⁺)도 크기가 작아서 데이터만으로 고를 정도는 아니라는 뜻이다. " else "",
+    "변수 확정 전(후보 13개, trend·mon 없음)에는 baa_spread가 두 만기 모두 선택됐다. 확인해 보면 10년물의 baa_spread는 trend와 mon 중 하나만 넣으면 남고 둘 다 넣어야 사라진다. ",
+    "3년물은 후보를 8개로 줄이는 것만으로 사라진다. 즉 이 선택은 설정에 민감하다."),
+  fig("figure2_heatmap.png", paste0("그림 2. 1,000일 롤링 창별 LASSO 선택 (20일 간격, ", n_win, "개 창)")),
   html_table(data.frame(만기 = tg_short[hf$target], 상호작용 = hf$interaction, `선택 빈도` = paste0(f(100 * hf$selected, 1), "%"), check.names = FALSE),
              "표 4-1. 롤링 선택 빈도 5% 초과 항목", "50% 이상이면 \"안정적으로 선택\"으로 보기로 했으나, 그런 항목은 없다."),
-  P("롤링 창에서 안정적으로 선택되는 상호작용은 없다. 10년물은 2020–2024년에 fx_vol, vkospi 같은 <b>위험 변수</b>가 돌아가며 선택돼, 위험 경로가 이 시기에 작동했음을 시사한다."))
+  P("롤링 창에서 안정적으로 선택되는 상호작용은 없다. 다만 선택될 때는 대표 변수가 선택된다. 10년물은 VIX(", f(100 * hf$selected[hf$target == "k10" & hf$interaction == "vix"], 0),
+    "%), 3년물은 fut3_cum(", f(100 * hf$selected[hf$target == "k3" & hf$interaction == "fut3_cum"], 0), "%)이 가장 자주 선택된다. 그림 2에서 어느 시기에 선택됐는지 볼 수 있다."))
 
 t5s <- t5; t5s$`만기` <- tg_name[t5s$target]
 s6 <- paste0("<h2>6. 표본외 평가</h2>",
   P("1,000거래일 롤링 창으로 한국 t+1일 개장 직전(s(t)는 관측된 상태)의 Δy를 예측했다. M1·M2는 매일, M3(LASSO)는 20일마다 다시 추정했다. 첫 예측은 M1·M2가 ",
-    format(res$oos$k3$first_forecast), ", M3가 2016-06-22이다."),
+    format(res$oos$k3$first_forecast), ", M3가 ", format(min(res$oos$k3$forecasts$date[!is.na(res$oos$k3$forecasts$M3)])), "이다. 충격 성격(mon, s × mon)은 M1·M2·M3 모두에 넣었다."),
   html_table(data.frame(만기 = tg_short[t5s$target], 비교 = sub(" (non-nested)", "", t5s$comparison, fixed = TRUE), n = format(t5s$n, big.mark = ","), `MSFE 1` = f(t5s$msfe1, 2), `MSFE 2` = f(t5s$msfe2, 2),
                         `표본외 R²` = f(t5s$r2_oos, 3), `방향 적중 2` = paste0(f(100 * t5s$hit2, 1), "%"), `CW p` = fp(t5s$cw_p),
                         `GW 무조건 p` = fp(t5s$p_uncond), `GW 조건 p` = fp(t5s$p_cond), `DM p` = fp(t5s$dm_p), check.names = FALSE),
@@ -155,7 +184,7 @@ s6 <- paste0("<h2>6. 표본외 평가</h2>",
              "M0 = 0(랜덤워크), M1 = 기준 모형, M2 = 가설 모형, M3 = LASSO. 표본외 R² = 1 − MSFE 2 / MSFE 1(양수면 B가 나음). CW = Clark–West(단측, 중첩 비교), GW = Giacomini–White(제곱 손실), DM = 비중첩 M2 vs M3.", cls = "small"),
   "<ul><li>미국 충격을 쓰는 기준 모형(M1)은 랜덤워크보다 확실히 낫다(표본외 R² 3년물 ", f(oo("k3", "M1 vs M0", "r2_oos"), 2), ", 10년물 ", f(oo("k10", "M1 vs M0", "r2_oos"), 2), ").</li>",
   "<li>조건부 모형(M2)은 10년물에서만 Clark–West 검정으로 유의하게 낫다(p ", fp(oo("k10", "M2 vs M1", "cw_p")), "). 다만 MSFE 차이는 거의 없어서, 경제적으로 의미 있는 예측 개선이라고 하기는 어렵다.</li>",
-  "<li>3년물 M2의 누적 손실은 2022년 중반 하루의 큰 예측 오차가 대부분을 만들었다(그림 3).</li>",
+  "<li>3년물 M2의 누적 손실은 2022년 6월 며칠의 큰 예측 오차가 대부분을 만들었다(그림 3).</li>",
   "<li>LASSO 모형(M3)은 두 만기 모두 M1보다 못하다. 조건을 데이터로 고르는 방식은 표본외에서 과적합된다.</li></ul>",
   fig("figure3_cumulative_loss.png", "그림 3. M2의 M1 대비 누적 제곱오차 이득 (올라가면 M2가 나음)"))
 
@@ -187,7 +216,8 @@ s7 <- paste0("<h2>7. 견고성</h2>",
   ")로 유지된다. 외국인 포지션 효과는 날 단위로 작동한다. 다만 R10에서 약해지므로 '큰 상승 충격'과 구분이 완전하지는 않다.</li></ul>",
   html_table(data.frame(`분해 기준` = r2$check, 항 = r2$term, 계수 = paste0(f(r2$est), st(r2$p)), t = f(r2$t, 2), p = fp(r2$p), check.names = FALSE),
              "표 6. R2: 10년물 충격을 기대 부분(s_exp)과 기간프리미엄(s_tp)으로 분해", "KW = Kim–Wright, ACM = Adrian–Crump–Moench. 기간프리미엄은 사후 추정치라 해석에 한계가 있다.", cls = "small"),
-  P("ACM 분해에서는 기대 부분과 기간프리미엄 부분이 비슷한 크기(0.34, 0.31)로 넘어오고, VIX에 따라 약해지는 것은 <b>기간프리미엄 부분</b>이다(s_tp × VIX, p ",
+  P("ACM 분해에서는 기대 부분과 기간프리미엄 부분이 비슷한 크기(", f(r2v("R2 split by tp_acm", "s_exp", "est"), 2), ", ", f(r2v("R2 split by tp_acm", "s_tp", "est"), 2),
+    ")로 넘어오고, VIX에 따라 약해지는 것은 <b>기간프리미엄 부분</b>이다(s_tp × VIX, p ",
     fp(r2$p[r2$check == "R2 split by tp_acm" & r2$term == "s_tp:vix"]), "). 위험회피 때 미 국채 기간프리미엄의 움직임(안전자산 수요)은 한국으로 덜 넘어온다는 해석과 맞는다. ",
     "KW 분해는 기간프리미엄이 금리 변화 대부분을 흡수해 결과가 다르다."))
 
@@ -197,7 +227,7 @@ s8 <- paste0("<h2>8. 변동성 전이 (GARCH-X)</h2>",
   html_table(data.frame(만기 = tg_short[gxs$target], 모수 = gxs$label, 추정치 = f(gxs$est, 3), `강건 SE` = f(gxs$se, 3), t = f(gxs$t, 2),
                         `우도비(c)` = ifelse(gxs$label == "c (s^2/100)", f(gxs$lr_c, 2), ""), `p(c)` = ifelse(gxs$label == "c (s^2/100)", fp(gxs$lr_p), ""), check.names = FALSE),
              "표 7. GARCH-X 추정 결과", cls = "small"),
-  P("미국 충격의 제곱은 다음 날 국고채 변동성을 키운다. 10년물은 강하게(p ", fp(gc("k10", "lr_p")), "), 3년물은 약하게(p ", fp(gc("k3", "lr_p")), ") 나타난다. 평균 전이(s 계수)는 GARCH 오차 아래에서도 0.22, 0.27로 유지된다."))
+  P("미국 충격의 제곱은 다음 날 국고채 변동성을 키운다. 10년물은 강하게(p ", fp(gc("k10", "lr_p")), "), 3년물은 약하게(p ", fp(gc("k3", "lr_p")), ") 나타난다. 평균 전이(s 계수)는 GARCH 오차 아래에서도 ", f(gx$est[gx$target == "k3" & gx$label == "s"], 2), ", ", f(gx$est[gx$target == "k10" & gx$label == "s"], 2), "로 유지된다."))
 
 dg <- res$diagnostics
 s9 <- paste0("<h2>9. 진단</h2>",
@@ -211,14 +241,15 @@ s9 <- paste0("<h2>9. 진단</h2>",
   "<li>|s| 상위 1% 거래일을 빼면 10년물 VIX 계수(", f(dg$drop_top1pct_H3[dg$target == "k10"]), ")는 유지되지만, 10년물 H2(대칭)는 크게 줄어 일부 큰 충격일이 이끈다.</li></ul>")
 
 s10 <- paste0("<h2>10. 해석과 남은 과제</h2>",
-  "<ul><li><b>위험이 큰 '국면'에 전이가 약하다.</b> 원래 예측(위험이 전이를 키움)과 반대다. 이 효과는 주로 연도 단위 국면 차이에서 나온다(R11). 그래서 '위험한 날'보다 '위험한 시기'로 써야 정확하다. 위험회피 국면에서 미 국채 금리 움직임은 안전자산 수요와 기간프리미엄 변화가 크고(R2 ACM), 이런 움직임은 한국 금리로 덜 넘어온다. ",
-  "Hoek, Kamin & Yoldas(2022)의 '충격의 성격에 따라 파급이 다르다'는 결과와 연결해 해석할 수 있다.</li>",
+  "<ul><li><b>무엇이 넘어오느냐가 중요하다.</b> 통화정책형 충격(금리↑ 주가↓)은 성장형 충격보다 더 많이 넘어온다(3-1절). 한국 금리는 미국의 정책 기대 변화에 더 민감하게 반응한다. Hoek, Kamin & Yoldas(2022)의 신흥국 결과를 한국 일별 자료로 확인한 것이다.</li>",
+  "<li><b>위험이 큰 '국면'에 전이가 약하다.</b> 원래 예측(위험이 전이를 키움)과 반대다. 다만 충격 성격을 통제하면 Holm 보정 후 유의하지 않고, 주로 연도 단위 국면 차이에서 나온다(R11). 그래서 '위험한 날'보다 '위험한 시기'로, 보조 결과로 쓰는 것이 정확하다. 위험회피 국면에서 미 국채 금리 움직임은 안전자산 수요와 기간프리미엄 변화가 크고(R2 ACM), 이런 움직임은 한국 금리로 덜 넘어온다.</li>",
   "<li><b>외국인 포지션은 날 단위로 전이를 줄인다.</b> 외국인 선물 순매수가 쌓인 날 미국 금리가 오르면 10년물 전이는 오히려 작다. 연도 안의 날별 차이에서도 유지되는 유일한 결과다(R11). 포지션이 청산 압력보다 완충 역할을 했을 가능성, 또는 순매수 누적이 외국인 수요가 강한 국면을 나타낼 가능성을 논의한다. 강규호·서영경(2022)의 '선물 매도가 금리를 올린다'는 결과와는 질문이 다르다는 점을 함께 적는다. ",
   "다만 누적 순매수의 250일 z점수는 미결제약정이 아닌 포지션 대용치라는 한계를 명시한다.</li>",
   "<li><b>연구 질문에 대한 답</b>: 전이 강도는 날 단위 조건보다 국면 단위로 크게 변한다(그림 5, R11). 날 단위로 의미 있는 조건은 외국인 포지션 하나다. 조건부 모형의 표본외 개선이 작은 것(6절)과 같은 그림이다.</li>",
-  "<li><b>경로는 시기마다 바뀐다.</b> 2010년대에는 정책 기대(H1), 2020년 이후에는 위험(H3)이 전이 강도를 가른다(R4, 그림 2).</li>",
+  "<li><b>경로는 시기마다 바뀐다.</b> 2010년대에는 정책 기대(H1), 2020년 이후에는 위험(H3)이 전이 강도를 가른다(R4).</li>",
   "<li><b>남은 과제</b>: (1) 반대 부호 결과의 경제적 해석 보강(기간프리미엄 분해 결과 중심), (2) 리포트 표·그림 번호 정리, (3) 팀 번호가 정해지면 제출 파일 이름 변경, (4) BOK WP 2026-15 원문 확인 후 선행연구 비교 문장 확정.</li></ul>",
-  P("<b>해석 시 유의할 점</b>: 상호작용은 인과 경로가 아니라 조건부 상관이다. 원래 예측은 한쪽 방향이었으나 이론적 이유로 양측 검정으로 바꿨고, 이 사실을 본문에 밝힌다. 대표 변수는 결과를 보기 전에 정했고 바꾸지 않았다."))
+  P("<b>해석 시 유의할 점</b>: 상호작용은 인과 경로가 아니라 조건부 상관이다. 원래 예측은 한쪽 방향이었으나 이론적 이유로 양측 검정으로 바꿨고, 이 사실을 본문에 밝힌다. 대표 변수는 결과를 보기 전에 정했고 바꾸지 않았다. ",
+    "충격 성격(mon)은 선행연구에 따라 추가했지만 추가 전에 효과를 확인했으므로, 이 사실도 본문에 밝힌다."))
 
 ur <- res$unit_root
 sA <- paste0("<h2>부록 A. 단위근 검정</h2>",
@@ -226,7 +257,7 @@ sA <- paste0("<h2>부록 A. 단위근 검정</h2>",
                         `I(1) 판정` = ifelse(ur$I1, "예", "아니오"), `분석에 쓴 형태` = ur$used_as, check.names = FALSE),
              "표 A1. ADF(상수항, AIC 시차)와 KPSS(수준 정상성)", "I(1) 판정 = ADF가 단위근을 기각하지 못하고 KPSS가 정상성을 기각. KPSS p는 표 보간값(0.01–0.10에서 잘림).", cls = "small"),
   "<h2>부록 B. 재현 방법</h2>",
-  "<ul><li><code>Rscript code/02_analysis.R</code>: 분석 전체(약 1분). 결과는 <code>output/</code>(RData, 표 csv, 그림 png).</li>",
+  "<ul><li><code>Rscript code/02_analysis.R</code>: 분석 전체(몇 분). 결과는 <code>output/</code>(RData, 표 csv, 그림 png).</li>",
   "<li><code>Rscript code/03_results_report.R</code>: 이 문서(HTML, PDF).</li>",
   "<li><code>TEAM=Team3 Rscript code/00_build_submission.R</code>: 제출용 단일 R 파일. 수집 코드는 <code>if (FALSE)</code> 블록 안에 들어간다.</li></ul>")
 

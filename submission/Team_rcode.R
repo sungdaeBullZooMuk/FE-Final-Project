@@ -234,7 +234,8 @@ fred <- list(
   fred_get("VIXCLS",      "vix"),
   fred_get("DTWEXBGS",    "usd_idx"),
   fred_get("BAA10Y",      "baa_spread"),
-  fred_get("THREEFYTP10", "tp_kw")
+  fred_get("THREEFYTP10", "tp_kw"),
+  fred_get("NASDAQCOM",   "nasdaq")       # shock type (Hoek, Kamin & Yoldas 2022)
 )
 
 message("ACM ...")
@@ -303,7 +304,8 @@ cols <- c("date", "kr_open", "us_open",
           "kr1y", "cd91", "base_rate", "effr", "us3m",              # H1, H2 inputs
           "fut3_net", "fut10_net", "fgn_share",                     # H2
           "vix", "krw_usd", "vkospi", "usd_idx", "baa_spread",      # H3
-          "tp_kw", "tp_acm", "kospi", "fomc_day", "mpc_day", "next_mpc")  # controls
+          "tp_kw", "tp_acm", "kospi", "nasdaq",                     # controls
+          "fomc_day", "mpc_day", "next_mpc")
 df <- df[order(df$date), cols]
 
 # ---- checks ---------------------------------------------------------------------
@@ -347,6 +349,10 @@ message("Wrote ", OUT_CSV, " (", nrow(df), " rows)")
 #     otherwise pick up the trend. The no-trend model is reported alongside.
 #   - Forecasting models (4-5) do not use the trend: a 1,000-day window does not
 #     support extrapolating it.
+#   - Variables follow 조건별전이_변수확정_선행연구.md: 3 representatives (H1-H3),
+#     8 LASSO candidates, and the shock type mon (Hoek, Kamin & Yoldas 2022) as an
+#     unpenalized control in every model with conditions (s x mon). mon = 1 when the
+#     NASDAQ return over the same US days as s has the opposite sign to s.
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -372,9 +378,10 @@ res <- list(settings = list(L_NW = L_NW, W = W, STEP_H = STEP_H, START = START, 
 TARGETS <- list(k3 = c(dy = "kr3y", s = "us2y"), k10 = c(dy = "kr10y", s = "us10y"))
 REPS    <- c(H1 = "abs_kr1y_gap", H2 = "fut3_cum", H3 = "vix")
 PRED    <- c(H1 = "+", H2 = "+ (rising US yields)", H3 = "+")
-CANDS   <- c("abs_kr1y_gap", "cd_gap", "policy_gap", "days_to_mpc",            # H1
-             "fut3_cum", "fut10_cum", "st_spread", "fgn_share",                # H2
-             "vix", "fx_vol", "vkospi", "usd_idx", "baa_spread")               # H3
+CANDS   <- c("abs_kr1y_gap", "policy_gap",                                     # H1
+             "fut3_cum", "fut10_cum", "fgn_share",                             # H2
+             "vix", "baa_spread", "krw_chg20")                                 # H3
+ROB_ONLY <- c("kr1y_gap", "fx_vol", "st_spread")                               # R7, R8 only
 DUMMIES <- c("hol", "nous", "fomc_d", "mpc_d")
 
 save_tab <- function(x, name) write.csv(x, file.path(OUT, "tables", paste0(name, ".csv")), row.names = FALSE)
@@ -391,6 +398,10 @@ kr <- d[d$kr_open == 1, ]
 n  <- nrow(kr)
 for (v in c("us2y", "us5y", "us10y", "tp_kw", "tp_acm"))
   us[[paste0("d_", v)]] <- c(NA, 100 * diff(us[[v]]))
+# NASDAQ is closed on a few US bond-market days (Good Friday, 2012-10-29, 2025-01-09):
+# carry the last close, so the return is 0 that day and the move lands on the next day
+nq_i <- cummax(seq_len(nrow(us)) * !is.na(us$nasdaq))
+us$d_nq <- c(NA, 100 * diff(log(ifelse(nq_i > 0, us$nasdaq[pmax(nq_i, 1)], NA))))
 
 A <- data.frame(date = kr$date[-n], date1 = kr$date[-1])
 for (v in c("kr3y", "kr10y")) {
@@ -404,6 +415,7 @@ hi <- findInterval(A$date1 - 1, us$date)
 A$n_us <- pmax(hi - lo + 1, 0)
 sum_us <- function(x) mapply(function(a, b) if (b >= a) sum(x[a:b]) else 0, lo, hi)
 for (v in c("us2y", "us5y", "us10y", "tp_kw", "tp_acm")) A[[paste0("s_", v)]] <- sum_us(us[[paste0("d_", v)]])
+A$eq_ret <- sum_us(us$d_nq)                       # NASDAQ log return (%) over the same US days as s
 A$fomc_d <- 1 * (sum_us(us$fomc_day) > 0)
 A$mpc_d  <- kr$mpc_day[-1]
 A$nous   <- 1 * (A$n_us == 0)
@@ -440,6 +452,7 @@ A$vix       <- log(known(d$date, d$vix))
 A$fx_vol    <- (rollapplyr(c(NA, diff(log(kr$krw_usd))), 20, sd, fill = NA) * sqrt(250))[-n]
 A$vkospi    <- k$vkospi
 A$usd_idx   <- known(d$date, d$usd_idx)
+A$krw_chg20 <- (100 * c(rep(NA, 20), diff(log(kr$krw_usd), lag = 20)))[-n]   # 20-day log change, + = KRW weaker
 A$baa_spread <- known(d$date, d$baa_spread)
 
 # alignment checks (outline 3, appendix B)
@@ -447,7 +460,7 @@ i928 <- which(A$date1 == as.Date("2026-09-28"))
 stopifnot(length(i928) == 1, A$n_us[i928] == 3, A$hol[i928] == 1,
           abs(A$s_us2y[i928] - 100 * (us$us2y[us$date == as.Date("2026-09-25")] -
                                         us$us2y[us$date == as.Date("2026-09-22")])) < 1e-8)
-stopifnot(all(A$date1 > A$date), all(A$n_us >= 0), !anyNA(A$s_us2y[A$date >= START]))
+stopifnot(all(A$date1 > A$date), all(A$n_us >= 0), !anyNA(A$s_us2y[A$date >= START]), !anyNA(A$eq_ret[A$date >= START]))
 res$alignment_case <- A[i928, c("date", "date1", "n_us", "s_us2y", "dy_kr3y")]
 
 A_all <- A                                      # keeps 2009 for rolling transforms
@@ -473,6 +486,8 @@ prep <- function(tg, conds = CANDS, shock = TARGETS[[tg]]["s"], from = START, fi
   D <- data.frame(date = A$date, dy = A[[paste0("dy_", TARGETS[[tg]]["dy"])]],
                   dy0 = A[[paste0("dy0_", TARGETS[[tg]]["dy"])]], s = A[[paste0("s_", shock)]],
                   A[, c(DUMMIES, "trend")])
+  D$mon <- 1 * (D$s * A$eq_ret < 0)               # shock type: yields and stocks move in opposite directions
+  D$smon <- D$s * D$mon
   for (v in conds) D[[v]] <- A[[v]]
   D <- D[D$date >= from, ]
   if (!is.null(filter)) D <- D[filter(D), ]
@@ -481,7 +496,7 @@ prep <- function(tg, conds = CANDS, shock = TARGETS[[tg]]["s"], from = START, fi
   D$sp <- pmax(D$s, 0); D$sm <- pmin(D$s, 0)
   D
 }
-hyp_formula <- function(shocks = "s", conds = REPS, trend = TRUE, asym_f = FALSE) {
+hyp_formula <- function(shocks = "s", conds = REPS, trend = TRUE, asym_f = FALSE, shock_type = TRUE) {
   inter <- as.vector(outer(shocks, conds, paste, sep = ":"))
   terms <- c(shocks, conds, inter, "dy0", DUMMIES)
   if (asym_f) {                     # H2 split: s+ and s- each interacted with fut3_cum
@@ -489,12 +504,14 @@ hyp_formula <- function(shocks = "s", conds = REPS, trend = TRUE, asym_f = FALSE
                paste0(c("sp", "sm"), ":", REPS["H2"]), "dy0", DUMMIES)
   }
   if (trend) terms <- c(terms, "trend", paste0(if (asym_f) "s" else shocks, ":trend"))
+  if (shock_type) terms <- c(terms, "mon", paste0(if (asym_f) "s" else shocks, ":mon"))
   reformulate(terms, "dy")
 }
 
 # ---- 4-1. basics: descriptive statistics, unit roots (table 1, appendix A) --------
 message("4-1 basics")
-desc_vars <- c(dy_kr3y = "dy_kr3y", dy_kr10y = "dy_kr10y", s_us2y = "s_us2y", s_us10y = "s_us10y", setNames(CANDS, CANDS))
+desc_vars <- c(dy_kr3y = "dy_kr3y", dy_kr10y = "dy_kr10y", s_us2y = "s_us2y", s_us10y = "s_us10y", eq_ret = "eq_ret",
+               setNames(CANDS, CANDS), setNames(ROB_ONLY, ROB_ONLY))
 desc <- do.call(rbind, lapply(names(desc_vars), function(v) { x <- A[[desc_vars[v]]]; x <- x[!is.na(x)]
   data.frame(variable = v, n = length(x), mean = mean(x), sd = sd(x), min = min(x), p25 = quantile(x, .25),
              median = median(x), p75 = quantile(x, .75), max = max(x),
@@ -514,16 +531,16 @@ ur <- rbind(
   ur_row("us2y (level)", us$us2y[us$date >= START]), ur_row("us10y (level)", us$us10y[us$date >= START]),
   ur_row("dy_kr3y", A$dy_kr3y), ur_row("dy_kr10y", A$dy_kr10y),
   ur_row("s_us2y", A$s_us2y), ur_row("s_us10y", A$s_us10y),
-  do.call(rbind, lapply(CANDS, function(v) ur_row(v, A[[v]]))))
+  do.call(rbind, lapply(c(CANDS, ROB_ONLY), function(v) ur_row(v, A[[v]]))))
 # outline 4-1: a condition that looks I(1) (ADF does not reject AND KPSS rejects) is
 # replaced by its 250-day rolling z-score (same detrending as the futures positions)
 ur$I1 <- !ur$adf_reject & ur$kpss_reject
-transformed <- intersect(ur$series[ur$I1], CANDS)
+transformed <- intersect(ur$series[ur$I1], c(CANDS, ROB_ONLY))
 for (v in transformed) {                      # rolling z on the full calendar (2009 included)
   A[[paste0(v, "_raw")]] <- A[[v]]
   A[[v]] <- roll_z(A_all[[v]])[match(A$date, A_all$date)]
 }
-ur$used_as <- ifelse(ur$series %in% transformed, "250-day rolling z", ifelse(ur$series %in% CANDS, "level", ""))
+ur$used_as <- ifelse(ur$series %in% transformed, "250-day rolling z", ifelse(ur$series %in% c(CANDS, ROB_ONLY), "level", ""))
 res$unit_root <- ur; res$transformed <- transformed; save_tab(ur, "appendixA_unit_root")
 message("  I(1) conditions transformed to 250-day z: ", paste(transformed, collapse = ", "))
 
@@ -545,6 +562,16 @@ tab2 <- do.call(rbind, lapply(names(base), function(tg) { b <- base[[tg]]
              beta_up = ca$est[ca$term == "sp"], beta_down = ca$est[ca$term == "sm"],
              wald_up_eq_down = b$asym_test["W"], p_up_eq_down = b$asym_test["p"]) }))
 res$baseline <- base; res$table2 <- tab2; save_tab(tab2, "table2_baseline")
+# shock type (Hoek, Kamin & Yoldas 2022): growth-type (mon = 0) vs monetary-type (mon = 1) shocks
+tab2b <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+  D <- prep(tg, conds = REPS)
+  m <- lm(dy ~ s + mon + s:mon + dy0 + hol + nous + fomc_d + mpc_d, D); cf <- coefs(m)
+  b <- coef(m); V <- V_nw(m); g <- setNames(rep(0, length(b)), names(b)); g[c("s", "s:mon")] <- 1
+  data.frame(target = tg, share_mon = mean(D$mon[D$s != 0]), corr_mon_vix = cor(D$mon, D$vix),
+             beta_growth = cf$est[cf$term == "s"], beta_monetary = sum(g * b),
+             se_monetary = sqrt(as.numeric(t(g) %*% V %*% g)),
+             diff = cf$est[cf$term == "s:mon"], t_diff = cf$t[cf$term == "s:mon"], p_diff = cf$p[cf$term == "s:mon"]) }))
+res$table2b <- tab2b; save_tab(tab2b, "table2b_shock_type")
 
 # ---- 4-3. hypothesis tests (table 3, figure 1) -------------------------------------
 message("4-3 hypothesis tests")
@@ -563,14 +590,14 @@ for (tg in names(TARGETS)) {
   mm <- out$trend; b <- coef(mm$model); V <- mm$V
   size <- do.call(rbind, lapply(names(REPS), function(h) { v <- REPS[h]; term <- paste0("s:", v)
     do.call(rbind, lapply(c(0.2, 0.8), function(q) { zq <- quantile(D[[v]], q)
-      g <- setNames(rep(0, length(b)), names(b)); g["s"] <- 1; g[term] <- zq
+      g <- setNames(rep(0, length(b)), names(b)); g["s"] <- 1; g[term] <- zq; g["s:mon"] <- mean(D$mon)
       est <- sum(g * b); se <- sqrt(as.numeric(t(g) %*% V %*% g))
       data.frame(target = tg, hyp = h, condition = v, quantile = q, z = zq, beta = est, lo = est - 1.96 * se, hi = est + 1.96 * se) })) }))
   # figure 1: quintile betas, b5 - b1 = 0
   quint <- do.call(rbind, lapply(names(REPS), function(h) { v <- REPS[h]
     Q <- cut(D[[v]], quantile(D[[v]], 0:5 / 5), include.lowest = TRUE, labels = paste0("q", 1:5))
     X <- data.frame(D, Q = Q)
-    m <- lm(dy ~ 0 + Q + Q:s + dy0 + hol + nous + fomc_d + mpc_d + trend + s:trend, X); V <- V_nw(m)
+    m <- lm(dy ~ 0 + Q + Q:s + dy0 + hol + nous + fomc_d + mpc_d + trend + s:trend + mon + s:mon, X); V <- V_nw(m)
     cf <- coefs(m, V); bq <- cf[grepl("^Q.*:s$", cf$term), ]
     R <- matrix(0, 1, length(coef(m)), dimnames = list(NULL, names(coef(m)))); R[, "Qq5:s"] <- 1; R[, "Qq1:s"] <- -1
     wt <- wald(m, V, R)
@@ -581,7 +608,7 @@ for (tg in names(TARGETS)) {
 # table 3: interaction rows, two-sided p, Holm over 6 tests (H1, H3 symmetric; H2 = beta+ from split model)
 tab3 <- do.call(rbind, lapply(names(hyp), function(tg) do.call(rbind, lapply(c("trend", "notrend"), function(sp) {
   f <- hyp[[tg]]$fits[[sp]]
-  rows <- rbind(f$coef[f$coef$term %in% c("s", paste0("s:", REPS[c("H1", "H3")]), paste0("s:", REPS["H2"])), ],
+  rows <- rbind(f$coef[f$coef$term %in% c("s", paste0("s:", REPS[c("H1", "H3")]), paste0("s:", REPS["H2"]), "s:mon"), ],
                 transform(f$coef_asym[f$coef_asym$term %in% paste0(c("sp", "sm"), ":", REPS["H2"]), ]))
   rows$target <- tg; rows$spec <- sp; rows }))))
 tab3$hyp <- ifelse(grepl(REPS["H1"], tab3$term), "H1", ifelse(grepl(REPS["H2"], tab3$term), "H2",
@@ -608,9 +635,13 @@ res$rep_cor <- cor(Dr[, REPS])
 res$rep_vif <- sapply(REPS, function(v) 1 / (1 - summary(lm(reformulate(setdiff(REPS, v), v), Dr))$r.squared))
 
 # ---- 4-4. LASSO / Elastic Net (full sample, figure 2) ------------------------------
-lasso_design <- function(D) {
+# unpenalized: s, dy0, dummies, mon, s x mon (and trend, s x trend); penalized: s x condition.
+# Full-sample fits keep the trend like the hypothesis model; rolling forecasts drop it like M1/M2.
+lasso_design <- function(D, trend = TRUE) {
   inter <- sapply(CANDS, function(v) D$s * D[[v]]); colnames(inter) <- paste0("s:", CANDS)
-  X <- cbind(s = D$s, dy0 = D$dy0, as.matrix(D[, DUMMIES]), as.matrix(D[, CANDS]), inter)
+  ctrl <- cbind(s = D$s, dy0 = D$dy0, as.matrix(D[, DUMMIES]), mon = D$mon, "s:mon" = D$smon)
+  if (trend) ctrl <- cbind(ctrl, trend = D$trend, "s:trend" = D$s * D$trend)
+  X <- cbind(ctrl, as.matrix(D[, CANDS]), inter)
   pf <- c(rep(0, ncol(X) - length(CANDS)), rep(1, length(CANDS)))
   list(X = X, pf = pf)
 }
@@ -626,7 +657,7 @@ for (tg in names(TARGETS)) {
   D <- prep(tg, conds = CANDS, from = START10); L <- lasso_design(D)
   la <- bic_fit(L$X, D$dy, L$pf, 1); en <- bic_fit(L$X, D$dy, L$pf, 0.5)
   inter <- paste0("s:", CANDS)
-  lasso[[tg]] <- list(n = nrow(D), lasso = la, enet = en,
+  lasso[[tg]] <- list(n = nrow(D), p = ncol(L$X), lasso = la, enet = en,
                       selected = data.frame(target = tg, interaction = inter, lasso = la$beta[inter], enet = en$beta[inter], row.names = NULL))
 }
 tab_l <- do.call(rbind, lapply(lasso, `[[`, "selected")); res$lasso <- lasso; res$table_lasso <- tab_l; save_tab(tab_l, "table4_lasso")
@@ -692,7 +723,7 @@ dmwtest <- function(real, f1, f2) {
 }
 # rolling forecasts: window = previous W pairs (their outcomes are known at the Korean close on t)
 roll_ols <- function(D, conds) {
-  base_cols <- c("s", "dy0", DUMMIES); fc <- rep(NA_real_, nrow(D))
+  base_cols <- c("s", "dy0", DUMMIES, "mon", "smon"); fc <- rep(NA_real_, nrow(D))
   for (i in (W + 1):nrow(D)) {
     w <- (i - W):(i - 1)
     if (length(conds)) { Zw <- as.matrix(D[w, conds, drop = FALSE]); mu <- colMeans(Zw); sdv <- apply(Zw, 2, sd) }
@@ -705,7 +736,7 @@ roll_ols <- function(D, conds) {
   fc
 }
 roll_lasso <- function(D) {
-  L <- lasso_design(D); fc <- rep(NA_real_, nrow(D)); ci <- match(CANDS, colnames(L$X))
+  L <- lasso_design(D, trend = FALSE); fc <- rep(NA_real_, nrow(D)); ci <- match(CANDS, colnames(L$X))
   refit <- seq(W + 1, nrow(D), by = STEP_H)
   for (r in refit) {
     w <- (r - W):(r - 1); Xw <- L$X[w, ]
