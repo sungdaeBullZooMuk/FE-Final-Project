@@ -176,16 +176,21 @@ s5 <- paste0("<h2>5. 데이터 기반 확인 (LASSO·Elastic Net)</h2>",
 t5s <- t5; t5s$`만기` <- tg_name[t5s$target]
 s6 <- paste0("<h2>6. 표본외 평가</h2>",
   P("1,000거래일 롤링 창으로 한국 t+1일 개장 직전(s(t)는 관측된 상태)의 Δy를 예측했다. M1·M2는 매일, M3(LASSO)는 20일마다 다시 추정했다. 첫 예측은 M1·M2가 ",
-    format(res$oos$k3$first_forecast), ", M3가 ", format(min(res$oos$k3$forecasts$date[!is.na(res$oos$k3$forecasts$M3)])), "이다. 충격 성격(mon, s × mon)은 M1·M2·M3 모두에 넣었다."),
+    format(res$oos$k3$first_forecast), ", M3가 ", format(min(res$oos$k3$forecasts$date[!is.na(res$oos$k3$forecasts$M3)])), "이다. 설계 v6에 따라 M1·M2에는 충격 성격(mon)을 넣지 않고, M4 = M1 + mon, s × mon을 따로 만들었다(N5: M4 vs M1, N7: M4 vs M2). M3(LASSO)에는 mon이 벌점 없는 통제로 들어 있다."),
   html_table(data.frame(만기 = tg_short[t5s$target], 비교 = sub(" (non-nested)", "", t5s$comparison, fixed = TRUE), n = format(t5s$n, big.mark = ","), `MSFE 1` = f(t5s$msfe1, 2), `MSFE 2` = f(t5s$msfe2, 2),
                         `표본외 R²` = f(t5s$r2_oos, 3), `방향 적중 2` = paste0(f(100 * t5s$hit2, 1), "%"), `CW p` = fp(t5s$cw_p),
                         `GW 무조건 p` = fp(t5s$p_uncond), `GW 조건 p` = fp(t5s$p_cond), `DM p` = fp(t5s$dm_p), check.names = FALSE),
              "표 5. 표본외 예측 비교 (비교 \"A vs B\"에서 MSFE 1 = A, MSFE 2 = B)",
-             "M0 = 0(랜덤워크), M1 = 기준 모형, M2 = 가설 모형, M3 = LASSO. 표본외 R² = 1 − MSFE 2 / MSFE 1(양수면 B가 나음). CW = Clark–West(단측, 중첩 비교), GW = Giacomini–White(제곱 손실), DM = 비중첩 M2 vs M3.", cls = "small"),
+             "M0 = 0(랜덤워크), M1 = 기준 모형, M2 = 가설 모형(조건 3개, mon 없음), M3 = LASSO, M4 = M1 + 충격 성격. 표본외 R² = 1 − MSFE 2 / MSFE 1(양수면 B가 나음). CW = Clark–West(단측, 중첩 비교), GW = Giacomini–White(제곱 손실), DM = 비중첩 비교.", cls = "small"),
   "<ul><li>미국 충격을 쓰는 기준 모형(M1)은 랜덤워크보다 확실히 낫다(표본외 R² 3년물 ", f(oo("k3", "M1 vs M0", "r2_oos"), 2), ", 10년물 ", f(oo("k10", "M1 vs M0", "r2_oos"), 2), ").</li>",
   "<li>조건부 모형(M2)은 10년물에서만 Clark–West 검정으로 유의하게 낫다(p ", fp(oo("k10", "M2 vs M1", "cw_p")), "). 다만 MSFE 차이는 거의 없어서, 경제적으로 의미 있는 예측 개선이라고 하기는 어렵다.</li>",
-  "<li>3년물 M2의 누적 손실은 2022년 6월 며칠의 큰 예측 오차가 대부분을 만들었다(그림 3).</li>",
-  "<li>LASSO 모형(M3)은 두 만기 모두 M1보다 못하다. 조건을 데이터로 고르는 방식은 표본외에서 과적합된다.</li></ul>",
+  "<li>3년물 M2의 누적 손실 중 약 ", { f3 <- res$oos$k3$forecasts; f3 <- f3[!is.na(f3$M1), ]; g3l <- (f3$dy - f3$M1)^2 - (f3$dy - f3$M2)^2
+    f(100 * sum(g3l[format(f3$date, "%Y-%m") == "2022-06"]) / sum(g3l), 0) }, "%가 2022년 6월 한 달에서 나왔다(그림 3).</li>",
+  "<li>LASSO 모형(M3)은 M1보다 거의 낫지 않다(표본외 R² 3년물 ", f(oo("k3", "M3 vs M1", "r2_oos"), 3), ", 10년물 ", f(oo("k10", "M3 vs M1", "r2_oos"), 3),
+  "). 조건을 데이터로 고르는 방식은 표본외에서 이득이 없다.</li>",
+  "<li><b>충격 성격 모형(M4)</b>: M1 대비 10년물 Clark–West p ", fp(oo("k10", "M4 vs M1 (N5)", "cw_p")), ", 3년물 ", fp(oo("k3", "M4 vs M1 (N5)", "cw_p")),
+  ". 조건 모형 M2 대비(N7, GW 단측) 10년물 p ", fp(pnorm(-oo("k10", "M4 vs M2 (N7, non-nested)", "t_uncond"))), ", 3년물 ", fp(pnorm(-oo("k3", "M4 vs M2 (N7, non-nested)", "t_uncond"))),
+  ". 3부 Holm 판정은 설계 v6의 표 8(table8_part3_holm.csv)을 따른다.</li></ul>",
   fig("figure3_cumulative_loss.png", "그림 3. M2의 M1 대비 누적 제곱오차 이득 (올라가면 M2가 나음)"))
 
 rb <- res$robustness; r2 <- rb[grepl("^R2", rb$check), ]

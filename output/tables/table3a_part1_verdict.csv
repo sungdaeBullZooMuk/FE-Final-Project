@@ -1,0 +1,7 @@
+"target","hyp","verdict"
+"k3","H1","not rejected"
+"k3","H2","not rejected"
+"k3","H3","not rejected"
+"k10","H1","not rejected"
+"k10","H2","spec-dependent"
+"k10","H3","significant (opposite sign)"

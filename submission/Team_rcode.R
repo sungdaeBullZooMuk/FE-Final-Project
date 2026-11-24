@@ -227,6 +227,7 @@ ecos <- list(
 message("FRED ...")
 fred <- list(
   fred_get("DGS2",        "us2y"),
+  fred_get("DGS3",        "us3y"),        # robustness R1 (same-maturity shock for KTB 3y)
   fred_get("DGS5",        "us5y"),        # robustness R1
   fred_get("DGS10",       "us10y"),
   fred_get("DGS3MO",      "us3m"),
@@ -300,7 +301,7 @@ df$mpc_day  <- as.integer(df$date %in% mpc)    # Korean date of the MPC decision
 df$next_mpc <- mpc_all[findInterval(df$date, mpc_all) + 1]
 
 cols <- c("date", "kr_open", "us_open",
-          "kr3y", "kr10y", "us2y", "us5y", "us10y",                 # targets, shocks
+          "kr3y", "kr10y", "us2y", "us3y", "us5y", "us10y",         # targets, shocks
           "kr1y", "cd91", "base_rate", "effr", "us3m",              # H1, H2 inputs
           "fut3_net", "fut10_net", "fgn_share",                     # H2
           "vix", "krw_usd", "vkospi", "usd_idx", "baa_spread",      # H3
@@ -350,9 +351,13 @@ message("Wrote ", OUT_CSV, " (", nrow(df), " rows)")
 #   - Forecasting models (4-5) do not use the trend: a 1,000-day window does not
 #     support extrapolating it.
 #   - Variables follow docs/조건별전이_변수확정_선행연구.md: 3 representatives (H1-H3),
-#     8 LASSO candidates, and the shock type mon (Hoek, Kamin & Yoldas 2022) as an
-#     unpenalized control in every model with conditions (s x mon). mon = 1 when the
-#     NASDAQ return over the same US days as s has the opposite sign to s.
+#     8 LASSO candidates, and the shock type mon (Hoek, Kamin & Yoldas 2022). mon = 1 when
+#     the NASDAQ return over the same US days as s has the opposite sign to s.
+#   - Design v6 (docs/조건별전이_연구설계_통합안.md) takes precedence:
+#     part 1 = pre-registered model WITHOUT mon, specs A (trend) and B (no trend), plus
+#     C/D with mon as robustness (4-3a); part 3 = N2 FLAT, N3 GARCH-X by shock type,
+#     N5 M4 vs M1, N7 M4 vs M2 (no mon in M1/M2), Holm over the 8 tests.
+#     The older 4-3 tables (with mon) and R1-R11 (spec C base) are kept for reference.
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -396,7 +401,7 @@ d <- d[order(d$date), ]
 us <- d[d$us_open == 1, ]
 kr <- d[d$kr_open == 1, ]
 n  <- nrow(kr)
-for (v in c("us2y", "us5y", "us10y", "tp_kw", "tp_acm"))
+for (v in c("us2y", "us3y", "us5y", "us10y", "tp_kw", "tp_acm"))
   us[[paste0("d_", v)]] <- c(NA, 100 * diff(us[[v]]))
 # NASDAQ is closed on a few US bond-market days (Good Friday, 2012-10-29, 2025-01-09):
 # carry the last close, so the return is 0 that day and the move lands on the next day
@@ -414,7 +419,7 @@ lo <- findInterval(A$date - 1, us$date) + 1
 hi <- findInterval(A$date1 - 1, us$date)
 A$n_us <- pmax(hi - lo + 1, 0)
 sum_us <- function(x) mapply(function(a, b) if (b >= a) sum(x[a:b]) else 0, lo, hi)
-for (v in c("us2y", "us5y", "us10y", "tp_kw", "tp_acm")) A[[paste0("s_", v)]] <- sum_us(us[[paste0("d_", v)]])
+for (v in c("us2y", "us3y", "us5y", "us10y", "tp_kw", "tp_acm")) A[[paste0("s_", v)]] <- sum_us(us[[paste0("d_", v)]])
 A$eq_ret <- sum_us(us$d_nq)                       # NASDAQ log return (%) over the same US days as s
 A$fomc_d <- 1 * (sum_us(us$fomc_day) > 0)
 A$mpc_d  <- kr$mpc_day[-1]
@@ -429,7 +434,7 @@ known <- function(dates, x, lag_extra = 0) {
   ifelse(i > 0, x[ok][pmax(i, 1)], NA)
 }
 roll_z <- function(x, w = 250) (x - rollapplyr(x, w, mean, fill = NA)) / rollapplyr(x, w, sd, fill = NA)
-cum_z  <- function(x) { cs <- cumsum(ifelse(is.na(x), 0, x)); cs[is.na(x)] <- NA; roll_z(cs) }
+cum_z  <- function(x, w = 250) { cs <- cumsum(ifelse(is.na(x), 0, x)); cs[is.na(x)] <- NA; roll_z(cs, w) }
 
 k <- kr[-n, ]
 A$kr1y_gap     <- k$kr1y - k$base_rate
@@ -443,6 +448,8 @@ A$days_to_mpc  <- mapply(function(t, nx) {
   extra <- seq(last + 1, nx, by = "day"); in_data + sum(!format(extra, "%u") %in% c("6", "7"))
 }, A$date, k$next_mpc)
 A$fut3_cum  <- cum_z(kr$fut3_net)[-n]
+A$fut3_cum_120 <- cum_z(kr$fut3_net, 120)[-n]   # R12: z-window sensitivity (design v6)
+A$fut3_cum_500 <- cum_z(kr$fut3_net, 500)[-n]
 f10 <- kr$fut10_net; f10[kr$date < as.Date("2011-06-01")] <- NA
 z10 <- rep(NA_real_, n); ok10 <- kr$date >= as.Date("2011-06-01"); z10[ok10] <- cum_z(f10[ok10])
 A$fut10_cum <- z10[-n]
@@ -488,6 +495,9 @@ prep <- function(tg, conds = CANDS, shock = TARGETS[[tg]]["s"], from = START, fi
                   A[, c(DUMMIES, "trend")])
   D$mon <- 1 * (D$s * A$eq_ret < 0)               # shock type: yields and stocks move in opposite directions
   D$smon <- D$s * D$mon
+  D$eq   <- A$eq_ret                              # NASDAQ return over the same US days (N1 noise check)
+  # FLAT (design v6, 3-1): the 2y moved more than the 10y in absolute terms over the same US days
+  D$flat <- 1 * (abs(A$s_us2y) > abs(A$s_us10y))
   for (v in conds) D[[v]] <- A[[v]]
   D <- D[D$date >= from, ]
   if (!is.null(filter)) D <- D[filter(D), ]
@@ -634,6 +644,94 @@ Dr <- prep("k10", conds = REPS)
 res$rep_cor <- cor(Dr[, REPS])
 res$rep_vif <- sapply(REPS, function(v) 1 / (1 - summary(lm(reformulate(setdiff(REPS, v), v), Dr))$r.squared))
 
+# ---- 4-3a. Part 1 of design v6 (docs/조건별전이_연구설계_통합안.md, 1-1..1-3) -----------
+# Pre-registered model WITHOUT the shock-type control. Spec A = trend (#12), B = no trend
+# (11-14 outline); C/D add mon (post hoc, robustness). Holm over the 6 tests within a spec;
+# "significant" only if Holm < 0.05 in both A and B. Joint HAC Wald chi2(3) per maturity.
+message("4-3a part 1 (specs A-D), joint Wald, collinearity")
+SPECS <- data.frame(spec = c("A", "B", "C", "D"), trend = c(TRUE, FALSE, TRUE, FALSE), mon = c(FALSE, FALSE, TRUE, TRUE))
+P1_TERMS <- c(H1 = paste0("s:", REPS[["H1"]]), H2 = paste0("sp:", REPS[["H2"]]), H3 = paste0("s:", REPS[["H3"]]))
+fit_part1 <- function(D, trend, mon) {
+  m  <- lm(hyp_formula(trend = trend, shock_type = mon), D); V <- V_nw(m)
+  ma <- lm(hyp_formula(trend = trend, asym_f = TRUE, shock_type = mon), D); Va <- V_nw(ma)
+  list(m = m, V = V, ma = ma, Va = Va, cf = coefs(m, V), cfa = coefs(ma, Va))
+}
+part1_rows <- function(f) {             # H1, H3 from the symmetric model, H2 = s+ x fut3 from the split model
+  rbind(f$cf[f$cf$term %in% P1_TERMS[c("H1", "H3")], ], f$cfa[f$cfa$term == P1_TERMS["H2"], ])
+}
+p1_fits <- list(); p1 <- list(); jw <- list()
+for (tg in names(TARGETS)) {
+  D <- prep(tg, conds = REPS)
+  for (k in seq_len(nrow(SPECS))) {
+    sp <- SPECS[k, ]; f <- fit_part1(D, sp$trend, sp$mon); p1_fits[[paste(tg, sp$spec)]] <- f
+    r <- part1_rows(f); r$hyp <- names(P1_TERMS)[match(r$term, P1_TERMS)]
+    p1[[length(p1) + 1]] <- data.frame(target = tg, spec = sp$spec, trend = sp$trend, mon = sp$mon, r, n = nobs(f$m), row.names = NULL)
+    # joint Wald in the split model: all three pre-registered interactions = 0
+    R <- matrix(0, 3, length(coef(f$ma)), dimnames = list(NULL, names(coef(f$ma))))
+    # lm names s x condition "condition:s" in the split model (s first appears after the conditions)
+    cname <- function(tm) { cn <- names(coef(f$ma)); if (tm %in% cn) tm else paste(rev(strsplit(tm, ":")[[1]]), collapse = ":") }
+    for (j in 1:3) R[j, cname(unname(P1_TERMS[j]))] <- 1
+    wj <- wald(f$ma, f$Va, R)
+    # H2 mechanism check (part 2, item 1): s+ x fut3 = s- x fut3 in the split model
+    R2 <- matrix(0, 1, length(coef(f$ma)), dimnames = list(NULL, names(coef(f$ma))))
+    R2[1, P1_TERMS["H2"]] <- 1; R2[1, paste0("sm:", REPS[["H2"]])] <- -1
+    w2 <- wald(f$ma, f$Va, R2)
+    jw[[length(jw) + 1]] <- data.frame(target = tg, spec = sp$spec, joint_W = wj["W"], joint_df = wj["df"], joint_p = wj["p"],
+                                       h2_up_eq_down_W = w2["W"], h2_up_eq_down_p = w2["p"], row.names = NULL)
+  }
+}
+tab_p1 <- do.call(rbind, p1)
+tab_p1$predicted <- "+"
+tab_p1$p_holm <- ave(tab_p1$p, tab_p1$spec, FUN = function(p) p.adjust(p, "holm"))
+vd <- function(tg, h) { a <- tab_p1$p_holm[tab_p1$target == tg & tab_p1$hyp == h & tab_p1$spec == "A"]
+  b <- tab_p1$p_holm[tab_p1$target == tg & tab_p1$hyp == h & tab_p1$spec == "B"]
+  e <- tab_p1$est[tab_p1$target == tg & tab_p1$hyp == h & tab_p1$spec == "A"]
+  if (a < 0.05 && b < 0.05) paste0("significant (", ifelse(e > 0, "predicted", "opposite"), " sign)")
+  else if (a < 0.05 || b < 0.05) "spec-dependent" else "not rejected" }
+p1_verdict <- do.call(rbind, lapply(names(TARGETS), function(tg) data.frame(target = tg, hyp = names(P1_TERMS),
+  verdict = sapply(names(P1_TERMS), function(h) vd(tg, h)), row.names = NULL)))
+tab_jw <- do.call(rbind, jw)
+tab_jw$joint_p_holm <- ave(tab_jw$joint_p, tab_jw$spec, FUN = function(p) p.adjust(p, "holm"))   # 2 maturities
+res$part1 <- list(table = tab_p1, verdict = p1_verdict, joint_wald = tab_jw, specs = SPECS)
+save_tab(tab_p1, "table3a_part1"); save_tab(p1_verdict, "table3a_part1_verdict"); save_tab(tab_jw, "table3c_joint_wald")
+
+# part 2, item 6 (post hoc): does s x VIX weaken under mon because s x VIX and s x mon overlap?
+coll <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+  fA <- p1_fits[[paste(tg, "A")]]; fC <- p1_fits[[paste(tg, "C")]]; X <- model.matrix(fC$m)
+  vt <- P1_TERMS[["H3"]]; vif1 <- function(v) 1 / (1 - summary(lm(X[, v] ~ X[, setdiff(colnames(X), c("(Intercept)", v))]))$r.squared)
+  data.frame(target = tg, corr_svix_smon = cor(X[, vt], X[, "s:mon"]), corr_mon_vix = cor(X[, "mon"], X[, REPS[["H3"]]]),
+             vif_svix_A = { XA <- model.matrix(fA$m); 1 / (1 - summary(lm(XA[, vt] ~ XA[, setdiff(colnames(XA), c("(Intercept)", vt))]))$r.squared) },
+             vif_svix_C = vif1(vt), vif_smon_C = vif1("s:mon"),
+             se_svix_A = fA$cf$se[fA$cf$term == vt], se_svix_C = fC$cf$se[fC$cf$term == vt],
+             est_svix_A = fA$cf$est[fA$cf$term == vt], est_svix_C = fC$cf$est[fC$cf$term == vt], row.names = NULL) }))
+res$part2_collinearity <- coll; save_tab(coll, "table3d_collinearity")
+
+# economic size per 10 bp US shock (design v6, 4-1): conditions in s.d. units (they are z-scored)
+econ10 <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+  fA <- p1_fits[[paste(tg, "A")]]; r <- part1_rows(fA); b2 <- tab2b[tab2b$target == tg, ]
+  D <- prep(tg, conds = character(0))
+  rbind(data.frame(target = tg, item = "baseline: 10 bp US shock", bp = 10 * tab2[tab2$target == tg, "beta0"]),
+        data.frame(target = tg, item = paste0("change per +1 s.d. of ", names(P1_TERMS)[match(r$term, P1_TERMS)], " (spec A)"), bp = 10 * r$est),
+        data.frame(target = tg, item = c("growth-type day (mon = 0)", "monetary-type day (mon = 1)"),
+                   bp = 10 * c(b2$beta_growth, b2$beta_monetary)),
+        data.frame(target = tg, item = "s.d. of daily KTB change", bp = sd(D$dy)), row.names = NULL) }))
+res$econ10 <- econ10; save_tab(econ10, "table3e_econ_10bp")
+
+# ---- Part 3 OLS pieces (design v6, 3-2): N2 FLAT, N1 noise check -------------------
+message("part 3: N2 (FLAT), N1 noise check")
+part3_ols <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+  D <- prep(tg, conds = character(0))
+  m2 <- lm(dy ~ s + flat + s:flat + dy0 + hol + nous + fomc_d + mpc_d, D); c2 <- coefs(m2)
+  Dn <- D[abs(D$eq) >= 0.1, ]                                    # drop days with |NASDAQ| < 0.1%
+  m1 <- lm(dy ~ s + mon + s:mon + dy0 + hol + nous + fomc_d + mpc_d, Dn); c1 <- coefs(m1)
+  rbind(data.frame(target = tg, test = "N2", term = "s:flat", est = c2$est[c2$term == "s:flat"], se = c2$se[c2$term == "s:flat"],
+                   t = c2$t[c2$term == "s:flat"], p_one = pnorm(-c2$t[c2$term == "s:flat"]), p_two = c2$p[c2$term == "s:flat"],
+                   share = mean(D$flat[D$s != 0]), corr_with_mon = cor(D$flat, D$mon), n = nobs(m2)),
+        data.frame(target = tg, test = "N1 noise check (|NASDAQ| >= 0.1%)", term = "s:mon", est = c1$est[c1$term == "s:mon"],
+                   se = c1$se[c1$term == "s:mon"], t = c1$t[c1$term == "s:mon"], p_one = NA, p_two = c1$p[c1$term == "s:mon"],
+                   share = mean(Dn$mon[Dn$s != 0]), corr_with_mon = NA, n = nobs(m1)), row.names = NULL) }))
+res$part3_ols <- part3_ols; save_tab(part3_ols, "table8a_part3_ols")
+
 # ---- 4-4. LASSO / Elastic Net (full sample, figure 2) ------------------------------
 # unpenalized: s, dy0, dummies, mon, s x mon (and trend, s x trend); penalized: s x condition.
 # Full-sample fits keep the trend like the hypothesis model; rolling forecasts drop it like M1/M2.
@@ -722,8 +820,10 @@ dmwtest <- function(real, f1, f2) {
   c(DMW = DMW, p = 2 * pnorm(-abs(DMW)), mse1 = mean(se1), mse2 = mean(se2))
 }
 # rolling forecasts: window = previous W pairs (their outcomes are known at the Korean close on t)
-roll_ols <- function(D, conds) {
-  base_cols <- c("s", "dy0", DUMMIES, "mon", "smon"); fc <- rep(NA_real_, nrow(D))
+# design v6: M1 = baseline without mon; M2 (= M2' in the design) adds the 3 conditions, no mon;
+# M4 = M1 + mon, s x mon (N5 vs M1, N7 vs M2)
+roll_ols <- function(D, conds, extra = character(0)) {
+  base_cols <- c("s", "dy0", DUMMIES, extra); fc <- rep(NA_real_, nrow(D))
   for (i in (W + 1):nrow(D)) {
     w <- (i - W):(i - 1)
     if (length(conds)) { Zw <- as.matrix(D[w, conds, drop = FALSE]); mu <- colMeans(Zw); sdv <- apply(Zw, 2, sd) }
@@ -759,14 +859,20 @@ oos <- list()
 for (tg in names(TARGETS)) {
   D <- prep(tg, conds = REPS)
   f0 <- rep(0, nrow(D)); f1 <- roll_ols(D, character(0)); f2 <- roll_ols(D, unname(REPS))
+  f4 <- roll_ols(D, character(0), extra = c("mon", "smon"))
   ok <- !is.na(f1)
   y <- D$dy[ok]
   cmp <- rbind(
     data.frame(target = tg, comparison = "M1 vs M0", t(oos_stats(y, f0[ok], f1[ok])), cw_t = NA, cw_p = NA,
                t(gw_sq(y, f0[ok], f1[ok])), gw_course_p = gw.test(f0[ok], f1[ok], y, T = length(y), tau = 1)$p.value, dm_p = NA),
     data.frame(target = tg, comparison = "M2 vs M1", t(oos_stats(y, f1[ok], f2[ok])), t(setNames(clark_west(y, f1[ok], f2[ok]), c("cw_t", "cw_p"))),
-               t(gw_sq(y, f1[ok], f2[ok])), gw_course_p = gw.test(f1[ok], f2[ok], y, T = length(y), tau = 1)$p.value, dm_p = NA))
-  fc <- data.frame(date = D$date, dy = D$dy, M0 = f0, M1 = f1, M2 = f2)
+               t(gw_sq(y, f1[ok], f2[ok])), gw_course_p = gw.test(f1[ok], f2[ok], y, T = length(y), tau = 1)$p.value, dm_p = NA),
+    data.frame(target = tg, comparison = "M4 vs M1 (N5)", t(oos_stats(y, f1[ok], f4[ok])), t(setNames(clark_west(y, f1[ok], f4[ok]), c("cw_t", "cw_p"))),
+               t(gw_sq(y, f1[ok], f4[ok])), gw_course_p = gw.test(f1[ok], f4[ok], y, T = length(y), tau = 1)$p.value, dm_p = NA),
+    data.frame(target = tg, comparison = "M4 vs M2 (N7, non-nested)", t(oos_stats(y, f2[ok], f4[ok])), cw_t = NA, cw_p = NA,
+               t(gw_sq(y, f2[ok], f4[ok])), gw_course_p = gw.test(f2[ok], f4[ok], y, T = length(y), tau = 1)$p.value,
+               dm_p = dmwtest(y, f2[ok], f4[ok])["p"]))
+  fc <- data.frame(date = D$date, dy = D$dy, M0 = f0, M1 = f1, M2 = f2, M4 = f4)
   if (STAGE >= 2) {
     D3 <- prep(tg, conds = CANDS, from = START10)
     f3 <- roll_lasso(D3)
@@ -819,7 +925,7 @@ if (STAGE >= 2) {
   rob <- list()
   for (tg in names(TARGETS)) {
     # R1: alternative shock maturities
-    for (sh in c("us5y", "us10y", "us2y")) if (sh != TARGETS[[tg]]["s"])
+    for (sh in c("us3y", "us5y", "us10y", "us2y")) if (sh != TARGETS[[tg]]["s"])
       rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), prep(tg, REPS, shock = sh)), paste0("R1 shock ", sh), tg)
     # R3: drop pairs within 3 Korean trading days of an FOMC shock
     fom <- which(A$fomc_d == 1); near <- unique(unlist(lapply(fom, function(i) (i - 3):(i + 3))))
@@ -865,6 +971,18 @@ if (STAGE >= 2) {
   }
   rob_tab <- do.call(rbind, rob); res$robustness <- rob_tab; save_tab(rob_tab, "table6_robustness")
 
+  # R12 (design v6): fut3 z-score window 120 / 500 days instead of 250, part 1 specs A and B (no mon)
+  r12 <- list()
+  for (tg in names(TARGETS)) for (zw in c("120", "500")) {
+    Atmp <- A; A$fut3_cum <- A[[paste0("fut3_cum_", zw)]]; D12 <- prep(tg, conds = REPS); A <- Atmp
+    for (k in 1:2) { sp <- SPECS[k, ]; r <- part1_rows(fit_part1(D12, sp$trend, FALSE))
+      r12[[length(r12) + 1]] <- data.frame(target = tg, z_window = zw, spec = sp$spec, r,
+                                           hyp = names(P1_TERMS)[match(r$term, P1_TERMS)], n = nrow(D12), from = min(D12$date), row.names = NULL) }
+  }
+  r12 <- do.call(rbind, r12)
+  r12$p_holm <- ave(r12$p, paste(r12$z_window, r12$spec), FUN = function(p) p.adjust(p, "holm"))
+  res$r12 <- r12; save_tab(r12, "table6b_r12_zwindow")
+
   # R4: sup-Wald test for a break in beta0 (baseline), HAC, 15% trimming
   supw <- do.call(rbind, lapply(names(TARGETS), function(tg) {
     D <- prep(tg, conds = character(0)); Tn <- nrow(D); grid <- seq(floor(0.15 * Tn), ceiling(0.85 * Tn), by = 5)
@@ -902,7 +1020,50 @@ if (STAGE >= 3) {
                lr_c = lr, lr_p = 0.5 * pchisq(lr, 1, lower.tail = FALSE),   # c on the boundary: 50:50 chi-bar
                row.names = NULL) }))
   res$garchx <- garch; save_tab(garch, "table7_garchx")
+
+  # N3 (design v6, 3-2-1): mean equation with s, mon, s x mon; variance with c_m s^2 mon + c_g s^2 (1 - mon).
+  # Signed LR test of c_m = c_g against c_m > c_g; restricted model = common c (same mean equation).
+  message("  N3: GARCH-X by shock type")
+  n3 <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+    D <- prep(tg, conds = character(0))
+    mx <- as.matrix(D[, c("s", "dy0", DUMMIES, "mon", "smon")])
+    vx_u <- cbind(D$s^2 * D$mon, D$s^2 * (1 - D$mon)) / 100; vx_r <- matrix(D$s^2 / 100, ncol = 1)
+    spec_n3 <- function(vxreg) {
+      sp <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1), external.regressors = vxreg),
+                       mean.model = list(armaOrder = c(0, 0), include.mean = TRUE, external.regressors = mx),
+                       distribution.model = "std")
+      k <- ncol(vxreg); setbounds(sp) <- setNames(rep(list(c(0, 100)), k), paste0("vxreg", 1:k))
+      setstart(sp) <- setNames(as.list(rep(0.1, k)), paste0("vxreg", 1:k)); sp
+    }
+    fu <- ugarchfit(spec_n3(vx_u), D$dy, solver = "hybrid"); fr <- ugarchfit(spec_n3(vx_r), D$dy, solver = "hybrid")
+    cu <- coef(fu); rc <- fu@fit$robust.matcoef; Vr <- fu@fit$robust.cvar; ix <- match(c("vxreg1", "vxreg2"), names(cu))
+    lr <- max(0, 2 * (likelihood(fu) - likelihood(fr))); dc <- cu["vxreg1"] - cu["vxreg2"]
+    se_d <- sqrt(Vr[ix[1], ix[1]] + Vr[ix[2], ix[2]] - 2 * Vr[ix[1], ix[2]])
+    boundary <- any(cu[c("vxreg1", "vxreg2")] < 1e-6)
+    data.frame(target = tg, c_m = cu["vxreg1"], se_c_m = rc["vxreg1", 2], c_g = cu["vxreg2"], se_c_g = rc["vxreg2", 2],
+               c_common = coef(fr)["vxreg1"], beta_smon_mean = cu["mxreg8"], loglik_u = likelihood(fu), loglik_r = likelihood(fr),
+               lr = lr, signed_root = sign(dc) * sqrt(lr), p_one = pnorm(-sign(dc) * sqrt(lr)),
+               wald_t = dc / se_d, wald_p_one = pnorm(-dc / se_d), boundary = boundary, row.names = NULL) }))
+  res$n3 <- n3; save_tab(n3, "table8b_n3_garchx")
 }
+
+# ---- Part 3 Holm family (design v6, 3-3): N2, N3, N5, N7 x 2 maturities ----------
+p3 <- rbind(
+  data.frame(test = "N2 s x FLAT (one-sided t)", target = part3_ols$target[part3_ols$test == "N2"],
+             stat = part3_ols$t[part3_ols$test == "N2"], p = part3_ols$p_one[part3_ols$test == "N2"]),
+  if (exists("n3")) data.frame(test = "N3 c_m > c_g (signed LR)", target = n3$target, stat = n3$signed_root, p = n3$p_one),
+  data.frame(test = "N5 M4 vs M1 (Clark-West)", target = tab5$target[tab5$comparison == "M4 vs M1 (N5)"],
+             stat = tab5$cw_t[tab5$comparison == "M4 vs M1 (N5)"], p = tab5$cw_p[tab5$comparison == "M4 vs M1 (N5)"]),
+  data.frame(test = "N7 M4 vs M2 (GW uncond., one-sided)", target = tab5$target[tab5$comparison == "M4 vs M2 (N7, non-nested)"],
+             stat = tab5$t_uncond[tab5$comparison == "M4 vs M2 (N7, non-nested)"],
+             p = pnorm(-tab5$t_uncond[tab5$comparison == "M4 vs M2 (N7, non-nested)"])))
+p3$p_holm <- p.adjust(p3$p, "holm")
+# footnote: one family of 14 = part 1 spec A (6) + part 3 (8)
+pa <- tab_p1[tab_p1$spec == "A", ]
+all14 <- c(setNames(pa$p, paste("P1 spec A", pa$hyp, pa$target)), setNames(p3$p, paste(p3$test, p3$target)))
+p3$p_holm_14 <- p.adjust(all14, "holm")[paste(p3$test, p3$target)]
+res$part3 <- list(table = p3, holm14 = data.frame(test = names(all14), p = all14, p_holm_14 = p.adjust(all14, "holm"), row.names = NULL))
+save_tab(p3, "table8_part3_holm"); save_tab(res$part3$holm14, "table8c_holm14_footnote")
 
 # ---- extra figures for the report (figures 4-7) -----------------------------------
 message("report figures")

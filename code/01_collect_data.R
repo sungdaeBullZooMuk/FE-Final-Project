@@ -219,6 +219,7 @@ ecos <- list(
 message("FRED ...")
 fred <- list(
   fred_get("DGS2",        "us2y"),
+  fred_get("DGS3",        "us3y"),        # robustness R1 (same-maturity shock for KTB 3y)
   fred_get("DGS5",        "us5y"),        # robustness R1
   fred_get("DGS10",       "us10y"),
   fred_get("DGS3MO",      "us3m"),
@@ -292,7 +293,7 @@ df$mpc_day  <- as.integer(df$date %in% mpc)    # Korean date of the MPC decision
 df$next_mpc <- mpc_all[findInterval(df$date, mpc_all) + 1]
 
 cols <- c("date", "kr_open", "us_open",
-          "kr3y", "kr10y", "us2y", "us5y", "us10y",                 # targets, shocks
+          "kr3y", "kr10y", "us2y", "us3y", "us5y", "us10y",         # targets, shocks
           "kr1y", "cd91", "base_rate", "effr", "us3m",              # H1, H2 inputs
           "fut3_net", "fut10_net", "fgn_share",                     # H2
           "vix", "krw_usd", "vkospi", "usd_idx", "baa_spread",      # H3
