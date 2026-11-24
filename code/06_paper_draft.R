@@ -32,6 +32,9 @@ h3 { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 11pt; margin: 14
 body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; font-size: 11pt; line-height: 1.3; }  /* team decision 11-24; the serif face mangles χ², R² */
 p { margin: 0 0 7pt; } ul { margin: 0 0 8pt; padding-left: 16pt; } li { margin: 0 0 4pt; }
 figure { margin: 10pt 0 14pt; }
+pre { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 10pt; line-height: 1.45; margin: 6pt 0 9pt 12pt; white-space: pre-wrap; break-inside: avoid; }  /* equations */
+code { font-family: Menlo, monospace; font-size: 9.5pt; }
+pre code { font-family: inherit; font-size: inherit; }
 ")
 html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>본문 초안</title><style>", css, "</style></head><body>",
                "<p class='sub'>본문 초안 · ", paste(basename(files), collapse = ", "), " · 표·그림: ", paste(used, collapse = ", "),
