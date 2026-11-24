@@ -10,6 +10,7 @@
 ```
 Final Project/
 ├── reports/       읽을 결과물
+│   ├── 연구_프로세스_도식.pdf 연구 전체 흐름 도식 5쪽 (원본 code/process_map.html)
 │   ├── 연구_쉬운설명.pdf     처음 보는 사람용 설명서
 │   └── 분석결과_정리.pdf     표·그림 포함 상세 결과
 ├── docs/          설계 문서
