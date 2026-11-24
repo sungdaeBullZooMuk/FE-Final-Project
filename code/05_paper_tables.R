@@ -145,6 +145,68 @@ T6 <- tbl(c(th_span(c("", "P3: s × log VIX", "P2: s⁺ × fut3", "참고: s × 
          "R1의 미 2년 충격은 10년물에 짧은 만기 충격을 넣은 것이다. 3년물은 어떤 설정에서도 조건 효과가 Holm을 통과하지 않는다.",
          src("paper_table6.csv")))
 
+# ---- 그림 1: 시점 정렬 도식 (SVG) ---------------------------------------------------
+# Panel (a) a normal day, panel (b) the real holiday case stored by 02_analysis.R
+# (res$alignment_case, checked there with stopifnot).
+ac <- res$alignment_case
+us_days <- seq(ac$date, ac$date1 - 1, by = "day")
+us_days <- us_days[!format(us_days, "%u") %in% c("6", "7")]          # US weekdays t <= d < t+1
+stopifnot(length(us_days) == ac$n_us)
+kr_gap <- seq(ac$date + 1, ac$date1 - 1, by = "day"); kr_gap <- kr_gap[!format(kr_gap, "%u") %in% c("6", "7")]
+wd <- function(d) c("월", "화", "수", "목", "금", "토", "일")[as.integer(format(d, "%u"))]
+md <- function(d) paste0(as.integer(format(d, "%m")), "/", as.integer(format(d, "%d")))
+sg <- function(x) sprintf("%+.1f", x)
+KR <- "#2a78d6"; US <- "#eb6834"; INK <- "#141413"; MUTE <- "#5b5a55"
+tx <- function(x, y, s, size = 13, weight = 400, fill = INK, anchor = "middle")
+  sprintf("<text x='%g' y='%g' text-anchor='%s' font-size='%g' font-weight='%d' fill='%s'>%s</text>", x, y, anchor, size, weight, fill, s)
+bx <- function(x, y, w, h, col, fillc) sprintf("<rect x='%g' y='%g' width='%g' height='%g' rx='5' fill='%s' stroke='%s' stroke-width='1.2'/>", x, y, w, h, fillc, col)
+ln <- function(x1, y1, x2, y2, col = INK, w = 1.2, dash = NULL, arrow = FALSE)
+  sprintf("<line x1='%g' y1='%g' x2='%g' y2='%g' stroke='%s' stroke-width='%g'%s%s/>", x1, y1, x2, y2, col, w,
+          if (is.null(dash)) "" else paste0(" stroke-dasharray='", dash, "'"), if (arrow) " marker-end='url(#ar)'" else "")
+brk <- function(x1, x2, y, up = FALSE) { d <- if (up) -12 else 12
+  sprintf("<path d='M%g,%g L%g,%g L%g,%g L%g,%g' fill='none' stroke='%s' stroke-width='1.4'/>", x1, y, x1, y + d, x2, y + d, x2, y, INK) }
+box2 <- function(x, y, w, col, fillc, l1, l2)    # two-line box, 60 high
+  paste0(bx(x, y, w, 60, col, fillc), tx(x + w / 2, y + 26, l1, 19, 700, col), tx(x + w / 2, y + 49, l2, 16.5, 400, col))
+# sizes in viewBox units: the figure is ~170 mm wide in the paper, so 19 ~ 9 pt and 16.5 ~ 8 pt
+nb <- length(us_days); ux0 <- 330; uw <- (420 - 16 * (nb - 1)) / nb
+svg1 <- paste0(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 505' font-family=\"'Apple SD Gothic Neo','Noto Sans KR',sans-serif\">",
+  "<defs><marker id='ar' markerWidth='8' markerHeight='8' refX='7' refY='4' orient='auto'><path d='M0,0 L8,4 L0,8 z' fill='", MUTE, "'/></marker></defs>",
+  "<rect width='1000' height='505' fill='#ffffff'/>",
+  # panel (a)
+  tx(20, 26, "(a) 보통의 하루", 20, 700, INK, "start"),
+  tx(40, 62, "조건 z(t) 확정 (한국 t일 마감)", 19, 700, INK, "start"),
+  tx(40, 85, "|kr1y_gap|, 외국인 선물 포지션, log VIX", 16.5, 400, MUTE, "start"),
+  ln(250, 94, 250, 122, MUTE, 1.2, "4 3"),
+  tx(620, 62, "충격 s(t) = 미국 금리 변화 (bp)", 19, 700),
+  tx(620, 85, "같은 밤 주가 방향 → mon(t), 곡선 모양 → FLAT(t)", 16.5, 400, MUTE),
+  ln(30, 184, 975, 184, INK, 1.5, arrow = TRUE),
+  box2(40, 124, 210, KR, "#eef4fc", "한국 t일 마감", "종가 y(t)"),
+  box2(400, 124, 280, US, "#fdf1eb", "미국 t일 장", "한국 시간으로 밤"),
+  box2(760, 124, 200, KR, "#eef4fc", "한국 t+1일 마감", "종가 y(t+1)"),
+  brk(145, 860, 192), tx(500, 234, "목표 Δy(t+1) = y(t+1) − y(t) (bp)", 19, 700),
+  # divider
+  ln(20, 258, 980, 258, "#d9d8d2", 1),
+  # panel (b)
+  tx(20, 292, paste0("(b) 한국 휴장이 낀 실제 사례: ", format(ac$date, "%Y"), "년 ", md(ac$date), " → ", md(ac$date1)), 20, 700, INK, "start"),
+  tx(540, 326, paste0("s(t) = 미 2년 금리 ", md(max(us_days)), " 종가 − ", md(min(us_days) - 1), " 종가 = ", sg(ac$s_us2y), "bp"), 19, 700),
+  tx(540, 350, paste0("미국 거래일 ", nb, "개 변화의 합. 한국은 ",
+                      if (length(kr_gap)) paste0(md(min(kr_gap)), "–", md(max(kr_gap)), " 휴장") else "휴장 없음", " (더미 hol = 1)"), 16.5, 400, MUTE),
+  brk(ux0, ux0 + 420, 372, up = TRUE),
+  ln(30, 436, 975, 436, INK, 1.5, arrow = TRUE),
+  box2(40, 376, 210, KR, "#eef4fc", paste0("한국 ", md(ac$date), "(", wd(ac$date), ")"), "종가"),
+  paste0(sapply(seq_len(nb), function(i) { x <- ux0 + (i - 1) * (uw + 16)
+    box2(x, 376, uw, US, "#fdf1eb", paste0(md(us_days[i]), "(", wd(us_days[i]), ")"), "미국 장") }), collapse = ""),
+  box2(790, 376, 170, KR, "#eef4fc", paste0("한국 ", md(ac$date1), "(", wd(ac$date1), ")"), "종가"),
+  brk(145, 875, 444), tx(510, 488, paste0("Δy(t+1) 국고채 3년 = ", sg(ac$dy_kr3y), "bp (", md(ac$date), " 종가 → ", md(ac$date1), " 종가)"), 19, 700),
+  "</svg>")
+FIG1_SVG <- "output/figures/paper_figure1_timing.svg"
+writeLines(svg1, FIG1_SVG, useBytes = TRUE)
+F1 <- paste0("<figure class='fig'><figcaption>그림 1. 자료의 시점 정렬</figcaption>",
+             "<img src='../figures/paper_figure1_timing.svg'><p class='note'>",
+             "조건은 충격보다 먼저 알려진 값(한국 t일 마감)만 쓴다. 따라서 회귀의 어떤 설명변수도 목표 Δy(t+1)보다 뒤의 정보를 담지 않는다. ",
+             "미국 휴장일은 그날 변화가 0으로 들어가고, 결측은 보간하지 않는다. (b)는 02_analysis.R가 stopifnot으로 확인하는 정렬 사례다.", src("paper_figure1_timing.svg (05_paper_tables.R가 생성)"), "</p></figure>")
+
 # ---- 그림 2 ------------------------------------------------------------------------
 F2 <- paste0("<figure class='fig'><figcaption>그림 2. 250일 롤링 전이 계수 (점선 = 전체 표본)</figcaption>",
              "<img src='../figures/figure5_rolling_beta.png'><p class='note'>그림 안의 영문 제목은 본문 작성 때 지운다.",
@@ -171,10 +233,10 @@ tr.main td { background: #f3f3f0; } tr.ref td { color: #52514e; border-top: 0.5p
 .fig img { display: block; width: 100%; border: 0.5px solid #e4e3dd; }
 "
 html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>본문 표 초안</title><style>", css, "</style></head><body>",
-  "<h1>본문 표·그림 초안 (표 1–6, 그림 2)</h1>",
+  "<h1>본문 표·그림 초안 (그림 1–2, 표 1–6)</h1>",
   "<p class='sub'>보고서 구성안 기준 · 수치는 output/Team_result.RData의 res$paper에서 자동 생성 · ", format(Sys.Date()),
-  " · 그림 1(시점 도식)은 별도</p>",
-  T1, T2, F2, T3, T4, T5, T6, "</body></html>")
+  "</p>",
+  F1, T1, T2, F2, T3, T4, T5, T6, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML)
 

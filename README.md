@@ -11,7 +11,7 @@
 Final Project/
 ├── reports/       읽을 결과물
 │   ├── 연구_프로세스_도식.pdf 연구 전체 흐름 도식 5쪽 (원본 code/process_map.html)
-│   ├── 본문_표_초안.pdf      논문 본문 표 1–6·그림 2 초안 (구성안 형식)
+│   ├── 본문_표_초안.pdf      논문 본문 그림 1–2·표 1–6 초안 (구성안 형식)
 │   ├── 연구_쉬운설명.pdf     처음 보는 사람용 설명서
 │   └── 분석결과_정리.pdf     표·그림 포함 상세 결과
 ├── docs/          설계 문서
@@ -37,7 +37,7 @@ Rscript code/01_collect_data.R          # 데이터 수집 (ECOS API 키 필요,
 Rscript code/02_analysis.R              # 분석 전체 → output/
 Rscript code/03_results_report.R        # reports/분석결과_정리.pdf
 Rscript code/04_explainer.R             # reports/연구_쉬운설명.pdf
-Rscript code/05_paper_tables.R          # reports/본문_표_초안.pdf (논문 본문 표 1–6, 그림 2)
+Rscript code/05_paper_tables.R          # reports/본문_표_초안.pdf (논문 본문 그림 1–2, 표 1–6)
 TEAM=Team3 Rscript code/00_build_submission.R   # submission/Team3_rcode.R
 ```
 
