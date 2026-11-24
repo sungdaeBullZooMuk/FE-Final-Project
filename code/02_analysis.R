@@ -674,6 +674,20 @@ if (STAGE >= 2) {
   r12$p_holm <- ave(r12$p, paste(r12$z_window, r12$spec), FUN = function(p) p.adjust(p, "holm"))
   res$r12 <- r12; save_tab(r12, "table6b_r12_zwindow")
 
+  # R13 (exploratory, added 11-24 after the main results): each remaining daily candidate added
+  # to the three representative conditions as a fourth s x condition term, specs A and B (no mon).
+  # Holm over 6 candidates x 2 maturities within each spec, separate from the part 1 family.
+  R13_CANDS <- c("krw_chg20", "fx_vol", "policy_gap", "fgn_share", "baa_spread", "fut10_cum")
+  r13 <- do.call(rbind, lapply(names(TARGETS), function(tg) do.call(rbind, lapply(R13_CANDS, function(cv)
+    do.call(rbind, lapply(1:2, function(k) { sp <- SPECS[k, ]
+      D <- prep(tg, conds = c(REPS, cv))
+      m <- lm(hyp_formula(conds = c(REPS, cv), trend = sp$trend, shock_type = FALSE), D); cf <- coefs(m)
+      g <- function(term, col) { v <- cf[cf$term == term, col]; if (length(v)) v[1] else NA }
+      data.frame(target = tg, cand = cv, spec = sp$spec, n = nobs(m), est = g(paste0("s:", cv), "est"), p = g(paste0("s:", cv), "p"),
+                 vix_est = g("s:vix", "est"), vix_p = g("s:vix", "p"), cor_vix = cor(D$vix, D[[cv]])) }))))))
+  r13$p_holm <- ave(r13$p, r13$spec, FUN = function(p) p.adjust(p, "holm"))
+  res$r13 <- r13; save_tab(r13, "table6c_r13_exploratory")
+
   # R4: sup-Wald test for a break in beta0 (baseline), HAC, 15% trimming
   supw <- do.call(rbind, lapply(names(TARGETS), function(tg) {
     D <- prep(tg, conds = character(0)); Tn <- nrow(D); grid <- seq(floor(0.15 * Tn), ceiling(0.85 * Tn), by = 5)

@@ -66,22 +66,22 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
 <!-- ============ PAGE 1: overview ============ -->
 <section class="page">
   <h1>미국 금리 충격은 어떤 날 한국 국채로 더 넘어오나</h1>
-  <p class="sub">연구 프로세스 한눈에 보기 · 금융계량경제학 기말 프로젝트 · 설계 v6, 1단계 실행 결과 기준 (2026-11-24, 커밋 6f0f66f)</p>
+  <p class="sub">연구 프로세스 한눈에 보기 · 금융계량경제학 기말 프로젝트 · 설계 v6 · 본문 초안(reports/본문_초안.pdf)과 같은 결과 기준 (2026-11-24)</p>
 
   <div class="pipe">
     <div class="stage s1"><div class="k">STEP 1 · 질문</div><h3>무엇을 묻나</h3>
       <ul><li>간밤 미국 국채 금리 변화가 다음 날 국고채 금리를 얼마나 움직이나</li><li>그 크기가 <b>어떤 날</b> 더 커지나</li></ul></div>
     <div class="arrow">›</div>
     <div class="stage s2"><div class="k">STEP 2 · 자료</div><h3>일별 시점 맞추기</h3>
-      <ul><li>2010-01 ~ 2026-10, 4,140일</li><li>한국 3년 ← 미 2년<br>한국 10년 ← 미 10년</li><li>한국 마감 → 미국 장 → 다음 날 한국</li></ul></div>
+      <ul><li>2010-01 ~ 2026-10, 4,140일</li><li>한국 3년 ← 미 2년<br>한국 10년 ← 미 10년</li><li>미국 충격 → 다음 날 한국</li><li class="small">앞부분은 한국 장중과 겹쳐 같은 날 일부 반영(0.1) → 전날 변화 통제</li></ul></div>
     <div class="arrow">›</div>
     <div class="stage s3"><div class="k">STEP 3 · 기초 사실</div><h3>평균 전이</h3>
       <div class="big">β ≈ 0.29 / 0.30</div>
-      <ul><li>미국 10bp → 다음 날 약 3bp</li><li>상승·하락 대칭</li></ul></div>
+      <ul><li>미국 10bp → 다음 날 약 3bp</li><li>상승·하락 대칭</li><li>시기마다 다름 (sup-Wald 기각)</li></ul></div>
     <div class="arrow">›</div>
     <div class="stage s4"><div class="k">STEP 4 · 1부 사전 가설</div><h3>조건 3개</h3>
       <ul><li>P1 정책 기대 <span class="verdict v-no">기각 못 함</span></li><li>P2 외국인 선물 <span class="verdict v-dep">설정 의존</span></li><li>P3 VIX <span class="verdict v-sig">유의, 반대 부호</span></li></ul>
-      <p class="small">10년물 기준. 예측(+)과 반대로 전이를 줄임</p></div>
+      <p class="small">10년물 기준. 예측(+)과 반대로 전이를 줄임. VIX는 신용위험과 구분 안 됨</p></div>
     <div class="arrow">›</div>
     <div class="stage s5"><div class="k">STEP 5 · 2부 해석</div><h3>왜 반대인가</h3>
       <ul><li>완충 해석 점검</li><li>상승일에만 효과 <span class="pass">맞음</span></li><li>기간프리미엄 경로 <span class="fail">판단 불가</span></li></ul>
@@ -95,7 +95,7 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
   <div class="banner">
     <div class="small" style="margin-bottom:1mm">지금 쓸 수 있는 결론 (미리 정한 규칙 적용 후)</div>
     <div class="big">미국 금리는 다음 날 약 30% 넘어온다. 10년물에서는 그 충격이 <span style="color:var(--green)">통화정책 신호일 때 더 넘어오고</span>(성장형 2.4bp → 통화정책형 3.8bp, 10bp 충격 기준), VIX가 높은 시기에는 덜 넘어온다.</div>
-    <div class="small" style="margin-top:1.4mm">"조건보다 성격이 <b>더 잘</b> 가른다"는 N7이 보정 후 통과하지 못해 쓰지 않는다. 3년물에서는 어느 조건도, 어느 새 검정도 통과하지 못했다.</div>
+    <div class="small" style="margin-top:1.4mm">"조건보다 성격이 <b>더 잘</b> 가른다"는 N7이 보정 후 통과하지 못해 쓰지 않는다. 3년물에서는 어느 조건도, 어느 새 검정도 통과하지 못했다. VIX 효과는 미국 신용 스프레드를 함께 넣으면 사라져, 넓은 신용위험의 효과일 수 있다(사후 탐색 R13).</div>
   </div>
 
   <div class="row" style="margin-top:3.5mm">
@@ -126,7 +126,9 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
     <!-- US session -->
     <rect x="370" y="105" width="260" height="45" rx="6" fill="#fdf1eb" stroke="#eb6834"/>
     <text x="500" y="125" text-anchor="middle" font-size="15" font-weight="700" fill="#eb6834">미국 장 (한국 시간 밤)</text>
-    <text x="500" y="143" text-anchor="middle" font-size="12" fill="#eb6834">마감 새벽 5–6시</text>
+    <text x="500" y="143" text-anchor="middle" font-size="12" fill="#eb6834">뉴욕 15:30 값 · 새벽 5–6시</text>
+    <rect x="200" y="98" width="430" height="59" rx="7" fill="none" stroke="#eb6834" stroke-width="1.3" stroke-dasharray="5 4"/>
+    <text x="235" y="168" text-anchor="middle" font-size="11" fill="#eb6834">s(t) 앞부분 ↔ 한국 t일 장중 겹침</text>
     <!-- Korea day t+1 -->
     <rect x="720" y="105" width="230" height="45" rx="6" fill="#eef4fc" stroke="#2a78d6"/>
     <text x="835" y="125" text-anchor="middle" font-size="15" font-weight="700" fill="#2a78d6">한국 t+1일 장</text>
@@ -140,20 +142,20 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
     <!-- target bracket -->
     <path d="M155,165 L155,185 L835,185 L835,165" fill="none" stroke="#141413" stroke-width="1.3"/>
     <text x="495" y="207" text-anchor="middle" font-size="14" font-weight="700">목표 Δy(t+1) = 100 × (y(t+1) − y(t))  bp</text>
-    <text x="495" y="226" text-anchor="middle" font-size="11.5" fill="#5b5a55">한국 연휴 뒤에는 그사이 미국 거래일 변화를 모두 합산 · 미국 휴장일은 s = 0 · 결측은 보간하지 않음</text>
+    <text x="495" y="226" text-anchor="middle" font-size="11.5" fill="#5b5a55">같은 날 점검: Δy(t)를 s(t)에 회귀하면 0.10 / 0.12 → Δy(t)를 통제해 β₀는 “다음 날 전이” · 연휴 뒤엔 미국 변화 합산</text>
     <text x="495" y="252" text-anchor="middle" font-size="12.5" font-weight="700" fill="#141413">추정: Δy(t+1) = α + (β₀ + β·조건)·s(t) + … · HAC 표준오차 (Newey–West, 시차 9)</text>
   </svg>
 
-  <div class="grid3" style="margin-top:2mm">
+  <div class="grid3" style="margin-top:2mm; grid-template-columns:0.85fr 1.5fr 1fr">
     <div class="card"><h3><span class="tag t-blue">목표·충격</span>두 만기 짝</h3>
       <table><tr><th>한국 (목표)</th><th>미국 (충격)</th></tr><tr><td>국고채 3년</td><td>미 국채 2년 (정책 기대 기준 만기)</td></tr><tr><td>국고채 10년</td><td>미 국채 10년 (같은 만기)</td></tr></table>
       <p class="small">출처: ECOS(한국), FRED(미국). 견고성에서 미 3년·5년물로도 교체(R1)</p></div>
     <div class="card"><h3><span class="tag t-amber">조건 3개</span>1부 가설 변수</h3>
-      <table><tr><th>경로</th><th>변수</th><th>예측</th></tr>
-      <tr><td>P1 정책 기대</td><td>|국고채 1년 − 기준금리|</td><td>+</td></tr>
-      <tr><td>P2 외국인 수급</td><td>외국인 3년 선물 누적 순매수 (250일 z)</td><td>+</td></tr>
-      <tr><td>P3 글로벌 위험</td><td>log VIX</td><td>+</td></tr></table>
-      <p class="small">"+" = 조건이 클수록 더 많이 넘어온다. 모두 표준화(1 = 1 표준편차)</p></div>
+      <table><tr><th>경로</th><th>변수</th><th>예측</th><th>반대 경로 (− 쪽)</th></tr>
+      <tr><td>P1 정책 기대</td><td>|국고채 1년 − 기준금리|</td><td>+</td><td>국내 정책 요인이 금리를 주도</td></tr>
+      <tr><td>P2 외국인 수급</td><td>외국인 3년 선물 누적 순매수 (250일 z)</td><td>+</td><td>외국인 수요가 상승 압력을 받아 냄</td></tr>
+      <tr><td>P3 글로벌 위험</td><td>log VIX</td><td>+</td><td>미국 금리 변화가 안전자산 수요</td></tr></table>
+      <p class="small">"+" = 조건이 클수록 더 많이 넘어온다(주 경로). 세 경로 모두 반대 경로도 있어 양측 검정. P1은 직접 근거가 가장 약함. 모두 표준화(1 = 1 표준편차)</p></div>
     <div class="card"><h3><span class="tag t-green">충격 성격</span>3부 변수</h3>
       <table><tr><th>변수</th><th>1인 날</th><th>비율</th></tr>
       <tr><td>mon</td><td>미국 금리와 NASDAQ이 <b>반대</b> 방향 (통화정책형)</td><td class="n">약 43%</td></tr>
@@ -209,7 +211,8 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
         <p class="small">설정 A 예시. 0.05보다 작으면 통과</p></div>
       <div class="card"><h3>견고성 (설정 A 기준, R1–R12)</h3>
         <p><b>VIX(P3)</b>: FOMC 전후 제외, 극단값 처리, 5일 평균, 2012년 이후, 비선형 통제, 충격 만기 교체, z 창 120·500일에서 대부분 유지. <span class="mid">같은 해 안에서만 보면 약해짐</span> → 주로 "위험한 <b>시기</b>"의 효과</p>
-        <p><b>외국인 선물(P2)</b>: 같은 해 안에서도 유지. <span class="mid">z 창을 바꾸면 통과 못 함</span></p></div>
+        <p><b>외국인 선물(P2)</b>: 같은 해 안에서도 유지. <span class="mid">z 창을 바꾸면 통과 못 함</span></p>
+        <p><b>사후 탐색(R13)</b>: 다른 일별 조건 6개를 더해도 통과 없음. <span class="mid">신용 스프레드를 넣으면 VIX 효과 사라짐</span>(−0.013, p 0.46)</p></div>
     </div>
   </div>
   <div class="pn">3 / 5</div>
@@ -253,7 +256,7 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
         <div class="node on">미통과 (Holm 0.058) → "10년물에서 성격<b>도</b> 가른다"</div>
       </div>
       <div style="font-size:14pt;color:#8a8984">›</div>
-      <div class="node" style="flex:1"><b>보고할 결론</b><br>10년물: 통화정책형 충격이 더 넘어오고(N1), 다른 분류(N2)와 표본외 예측(N5)에서도 확인된다. 외국인 수급·VIX 조건은 예측과 반대로 전이를 줄이는 방향이며, 보정 후 견고한 것은 VIX뿐이다. 3년물에서는 확인되지 않는다.</div>
+      <div class="node" style="flex:1"><b>보고할 결론</b><br>10년물: 통화정책형 충격이 더 넘어오고(N1), 다른 분류(N2)와 표본외 예측(N5)에서도 확인된다. 외국인 수급·VIX 조건은 예측과 반대로 전이를 줄이는 방향이며, 보정 후 견고한 것은 VIX뿐이다(신용위험과는 구분 못 함). 3년물에서는 확인되지 않는다.</div>
     </div></div>
   <div class="pn">4 / 5</div>
 </section>
@@ -272,6 +275,7 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
         <div class="tl-item"><div class="tl-date">11-23</div><div class="tl-dot"></div><div>팀원 가설 변경안 2개 (부호 뒤집기·단측 전환 → 채택하지 않음)</div></div>
         <div class="tl-item"><div class="tl-date">11-24</div><div class="tl-dot g"></div><div>통합안 v3 → v6: 1부·2부·3부 구분, 3부 검정 고정(<b>결과 보기 전 커밋</b>), 근거 전면 검토</div></div>
         <div class="tl-item"><div class="tl-date">11-24</div><div class="tl-dot g"></div><div>3부 실행, 견고성을 설정 A로 재실행, API 키 없이 재현 확인</div></div>
+        <div class="tl-item"><div class="tl-date">11-24</div><div class="tl-dot g"></div><div>본문 초안(17쪽). 시점 서술 수정·같은 날 점검, Granger·sup-Wald, 사후 탐색 R13, 인용 원문 확인</div></div>
         <div class="tl-item"><div class="tl-date">12-09</div><div class="tl-dot"></div><div>발표 (영어 슬라이드, 10분, 전원)</div></div>
         <div class="tl-item"><div class="tl-date">12-16</div><div class="tl-dot"></div><div>제출: 보고서 PDF, 단일 R 파일, csv, RData</div></div>
       </div></div>
@@ -296,20 +300,22 @@ svg text { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
           <tr><td>R4 · R9</td><td>기간 분할(2010–19 / 2020–26) · 2012년 이후 표본</td></tr>
           <tr><td>R7 · R8</td><td>대체 지표 (부호 있는 gap, 환율 변동성, 금리차)</td></tr>
           <tr><td>R10 · R11 · R12</td><td>충격 크기 비선형 · 같은 해 안에서만 · z 창 120·500일</td></tr>
+          <tr><td>R13 (사후)</td><td>다른 일별 조건 6개 추가 → 통과 없음, VIX ≈ 신용 스프레드</td></tr>
+          <tr><td>시점·외생성</td><td>같은 날 점검 · Granger(국고채 → 미국, β₀ 불변) · sup-Wald</td></tr>
         </table></div>
     </div>
 
     <div class="col" style="flex:0.9">
       <div class="card"><h3>부록으로 보낸 것</h3>
         <p>LASSO(조건을 데이터가 고르게 함): 아무것도 선택하지 않음 → 조건 효과가 약하다는 1부와 같은 방향</p>
-        <p>VAR·Granger, 다일 지속성(N4), 변동성 예측(N6), MCS, 공적분: 시간이 남으면</p></div>
+        <p>다일 지속성(N4), 변동성 예측(N6), MCS, 공적분: 하지 않음</p></div>
       <div class="card"><h3>남은 일</h3>
-        <p>□ 보고서를 1부·2부·3부 구성으로 다시 쓰기 (지금 PDF는 이전 구성)</p>
+        <p>☑ 본문 초안 17쪽 · ☑ 인용 원문 확인 · ☑ 재현 점검</p>
+        <p>□ 팀 번호·저자 이름 · □ 나머지 서지 대조</p>
         <p>□ 영어 발표 슬라이드</p>
-        <p>□ 선행연구 원문 확인</p>
-        <p>□ 제출 전 재현 점검 한 번 더</p></div>
+        <p>□ 제출 직전 재현 점검 한 번 더</p></div>
       <div class="card"><h3>한계</h3>
-        <p>mon은 하루 단위 근사라 거칠다 · 주가와 금리가 같은 뉴스에 함께 반응했을 수 있다 · 사전 가설의 반대 부호는 사후 해석만 있다</p></div>
+        <p>mon은 하루 단위 근사라 거칠다 · 주가와 금리가 같은 뉴스에 함께 반응했을 수 있다 · 반대 부호의 설명은 사후 해석 · VIX와 신용위험 구분 불가 · 시점이 완전히 나뉘지 않음</p></div>
     </div>
   </div>
   <div class="pn">5 / 5</div>
