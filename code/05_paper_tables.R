@@ -41,13 +41,14 @@ lab1 <- c(dy_kr3y = "국고채 3년 일별 변화 Δy (bp)", dy_kr10y = "국고�
           "mon share (k3)" = "통화정책형 날 비율 mon = 1 (3년물 짝)", "mon share (k10)" = "통화정책형 날 비율 mon = 1 (10년물 짝)",
           "FLAT share (k3)" = "단기 주도 날 비율 FLAT = 1 (3년물 짝)", "FLAT share (k10)" = "단기 주도 날 비율 FLAT = 1 (10년물 짝)")
 is_sh <- grepl("share", t1$variable)
+t1$kurt <- res$desc$kurt[match(t1$variable, res$desc$variable)]      # kurtosis (normal = 3), from table1_descriptive
 body1 <- sapply(seq_len(nrow(t1)), function(i) with(t1[i, ], tr(c(lab1[variable],
-  if (is_sh[i]) c("", paste0(f(100 * mean, 1), "%"), "", "", "", "") else
-    c(format(n, big.mark = ","), f(mean, 3), f(sd, 3), f(min, 2), f(median, 2), f(max, 2))))))
-T1 <- tbl(tr(c("변수", "N", "평균", "표준편차", "최소", "중앙값", "최대"), "th"), body1,
+  if (is_sh[i]) c("", paste0(f(100 * mean, 1), "%"), "", "", "", "", "") else
+    c(format(n, big.mark = ","), f(mean, 3), f(sd, 3), f(min, 2), f(median, 2), f(max, 2), f(kurt, 1))))))
+T1 <- tbl(tr(c("변수", "N", "평균", "표준편차", "최소", "중앙값", "최대", "첨도"), "th"), body1,
   "표 1. 기술통계 (2010-01-04 ~ 2026-10-30, 한국 거래일 쌍)",
   paste0("Δy는 한국 t일 종가 → t+1일 종가 변화, s는 그사이 끝난 미국 거래일 변화의 합이다. 조건은 한국 t일 마감 때 알려진 값이다. ",
-         "비율은 s ≠ 0인 날 기준이다.", src("paper_table1.csv")))
+         "비율은 s ≠ 0인 날 기준이다. 첨도는 정규분포에서 3이다.", src("paper_table1.csv", "table1_descriptive.csv(첨도)")))
 
 # ---- 표 2 --------------------------------------------------------------------------
 t2 <- pt$table2
