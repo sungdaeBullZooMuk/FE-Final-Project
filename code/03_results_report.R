@@ -198,12 +198,12 @@ cell <- function(est, t) ifelse(is.na(est), "–", paste0(f(est), st(2 * pnorm(-
 terms1011 <- c("s:abs_kr1y_gap" = "H1  s × |kr1y_gap|", "sp:fut3_cum" = "H2  s⁺ × fut3 (미 상승일)", "s:vix" = "H3  s × log VIX", "s:abs_s" = "s × |s| (비선형)")
 r1011 <- do.call(rbind, lapply(names(terms1011), function(tm) {
   vals <- unlist(lapply(c("k3", "k10"), function(tg) {
-    m <- t3[t3$target == tg & t3$spec == "trend" & t3$term == tm, ]
+    p1t <- res$part1$table; m <- p1t[p1t$target == tg & p1t$spec == "A" & p1t$term == tm, ]   # main = spec A (design v6)
     c(if (nrow(m)) cell(m$est, m$t) else "–", cell(r10(tg, tm, "est"), r10(tg, tm, "t")), cell(r11(tg, tm, "est"), r11(tg, tm, "t"))) }))
   as.data.frame(t(c(terms1011[[tm]], vals))) }))
 names(r1011) <- c("항", "k3_main", "k3_r10", "k3_r11", "k10_main", "k10_r10", "k10_r11")
 s7 <- paste0("<h2>7. 견고성</h2>",
-  P("세 대표 상호작용이 설정을 바꿔도 유지되는지 확인했다(그림 7). <b>10년물 H3(VIX)</b>는 거의 모든 설정에서 음(−)이고, FOMC 전후 제외(R3), 윈저화(R5), 5일 평균(R6), 2012년 이후 표본(R9), 충격 크기 비선형 통제(R10)에서도 유의하다. ",
+  P("세 대표 상호작용이 설정을 바꿔도 유지되는지 확인했다(그림 7). 설계 v6에 따라 견고성의 기준은 충격 성격(mon)을 넣지 않은 1부 본 설정 A(trend 있음)다. 그래서 그림 7과 표 6-1의 '본 설정'은 표 3(mon 포함)과 조금 다르다. <b>10년물 H3(VIX)</b>는 거의 모든 설정에서 음(−)이고, FOMC 전후 제외(R3), 윈저화(R5), 5일 평균(R6), 2012년 이후 표본(R9), 충격 크기 비선형 통제(R10)에서도 유의하다. ",
     "<b>시기 분할(R4)</b>에서 경로가 바뀐다. 2010–2019년에는 H1(10년물)과 H2(3년물)이 강하게 음(−)이고, 2020–2026년에는 10년물 H3가 강하게 음(−)이다."),
   fig("figure7_robustness.png", "그림 7. 상호작용 계수의 견고성 (95% HAC 구간)", "H2 칸은 대칭 항(s × fut3)이다. H2의 공식 검정인 미국 금리 상승일 항(s⁺ × fut3)은 표 6-1에 있다."),
   "<h3>7-1. '어떤 날'인가 '어떤 시기'인가 (R10, R11)</h3>",
@@ -222,9 +222,10 @@ s7 <- paste0("<h2>7. 견고성</h2>",
   html_table(data.frame(`분해 기준` = r2$check, 항 = r2$term, 계수 = paste0(f(r2$est), st(r2$p)), t = f(r2$t, 2), p = fp(r2$p), check.names = FALSE),
              "표 6. R2: 10년물 충격을 기대 부분(s_exp)과 기간프리미엄(s_tp)으로 분해", "KW = Kim–Wright, ACM = Adrian–Crump–Moench. 기간프리미엄은 사후 추정치라 해석에 한계가 있다.", cls = "small"),
   P("ACM 분해에서는 기대 부분과 기간프리미엄 부분이 비슷한 크기(", f(r2v("R2 split by tp_acm", "s_exp", "est"), 2), ", ", f(r2v("R2 split by tp_acm", "s_tp", "est"), 2),
-    ")로 넘어오고, VIX에 따라 약해지는 것은 <b>기간프리미엄 부분</b>이다(s_tp × VIX, p ",
-    fp(r2$p[r2$check == "R2 split by tp_acm" & r2$term == "s_tp:vix"]), "). 위험회피 때 미 국채 기간프리미엄의 움직임(안전자산 수요)은 한국으로 덜 넘어온다는 해석과 맞는다. ",
-    "KW 분해는 기간프리미엄이 금리 변화 대부분을 흡수해 결과가 다르다."))
+    ")로 넘어온다. VIX에 따른 약화는 ACM에서 두 부분의 크기가 비슷하고(s_exp × VIX ", f(r2v("R2 split by tp_acm", "s_exp:vix", "est")), ", p ",
+    fp(r2v("R2 split by tp_acm", "s_exp:vix", "p")), "; s_tp × VIX ", f(r2v("R2 split by tp_acm", "s_tp:vix", "est")), ", p ", fp(r2v("R2 split by tp_acm", "s_tp:vix", "p")),
+    "), KW에서는 오히려 기대 부분에서 나타난다(s_exp × VIX ", f(r2v("R2 split by tp_kw", "s_exp:vix", "est")), ", p ", fp(r2v("R2 split by tp_kw", "s_exp:vix", "p")),
+    "). 분해 방법에 따라 결과가 갈려 '기간프리미엄 부분이 약해진다'고 판단할 수 없다(설계 v6 2부 ③). 분해 모형은 trend 없이 추정했고 mon은 넣지 않았다."))
 
 gxs <- gx[gx$label %in% c("s", "alpha1", "beta1", "c (s^2/100)", "shape"), ]
 s8 <- paste0("<h2>8. 변동성 전이 (GARCH-X)</h2>",

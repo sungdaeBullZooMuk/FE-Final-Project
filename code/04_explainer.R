@@ -48,6 +48,8 @@ v <- list(
   h3_10 = f(g3("k10", "s:vix", "est"), 3), h3_10_p = fp(g3("k10", "s:vix", "p")), h3_10_holm = fp(g3("k10", "s:vix", "p_holm")),
   es_vix20 = f(esz(0.2)), es_vix80 = f(esz(0.8)), q1_vix = f(qb(1)), q5_vix = f(qb(5)),
   q_vix_p = fp(q$p_q5_q1[q$target == "k10" & q$hyp == "H3"][1]),
+  h2_10A = f(with(res$part1$table, est[target == "k10" & spec == "A" & term == "sp:fut3_cum"]), 3),
+  h3_10A = f(with(res$part1$table, est[target == "k10" & spec == "A" & term == "s:vix"]), 3),
   r11_h2 = f(rq("R11 within-year (s x year)", "k10", "sp:fut3_cum", "est"), 3), r11_h2_p = fp(rq("R11 within-year (s x year)", "k10", "sp:fut3_cum", "p")),
   r11_vix = f(rq("R11 within-year (s x year)", "k10", "s:vix", "est"), 3), r11_vix_p = fp(rq("R11 within-year (s x year)", "k10", "s:vix", "p")),
   r4_h1 = f(rq("R4 2010-2019", "k10", "s:abs_kr1y_gap", "est"), 3), r4_vix = f(rq("R4 2020-2026", "k10", "s:vix", "est"), 3),

@@ -607,7 +607,7 @@ for (tg in names(TARGETS)) {
   quint <- do.call(rbind, lapply(names(REPS), function(h) { v <- REPS[h]
     Q <- cut(D[[v]], quantile(D[[v]], 0:5 / 5), include.lowest = TRUE, labels = paste0("q", 1:5))
     X <- data.frame(D, Q = Q)
-    m <- lm(dy ~ 0 + Q + Q:s + dy0 + hol + nous + fomc_d + mpc_d + trend + s:trend + mon + s:mon, X); V <- V_nw(m)
+    m <- lm(dy ~ 0 + Q + Q:s + dy0 + hol + nous + fomc_d + mpc_d + trend + s:trend, X); V <- V_nw(m)   # spec A (design v6): no mon
     cf <- coefs(m, V); bq <- cf[grepl("^Q.*:s$", cf$term), ]
     R <- matrix(0, 1, length(coef(m)), dimnames = list(NULL, names(coef(m)))); R[, "Qq5:s"] <- 1; R[, "Qq1:s"] <- -1
     wt <- wald(m, V, R)
@@ -898,14 +898,16 @@ p3 <- ggplot(cum, aes(date, cum)) + geom_hline(yintercept = 0, colour = "grey70"
 save_fig(p3, "figure3_cumulative_loss", 10, 4)
 
 # ---- 4-7. diagnostics -------------------------------------------------------------
+# design v6: diagnostics and robustness use the part 1 main model (spec A: trend, no mon)
+hyp_A <- function(...) hyp_formula(..., shock_type = FALSE)
 message("4-7 diagnostics")
 arch_lm <- function(e, q = 5) { e2 <- e^2; X <- embed(e2, q + 1); m <- lm(X[, 1] ~ X[, -1])
   stat <- nrow(X) * summary(m)$r.squared; c(stat = stat, p = pchisq(stat, q, lower.tail = FALSE)) }
 diag <- do.call(rbind, lapply(names(TARGETS), function(tg) {
-  f <- hyp[[tg]]$fits$trend; e <- residuals(f$model)
+  e <- residuals(p1_fits[[paste(tg, "A")]]$m)
   lb <- Box.test(e, lag = 10, type = "Ljung-Box"); ar <- arch_lm(e)
   D <- prep(tg, conds = REPS); cut99 <- quantile(abs(D$s), 0.99)
-  m_inf <- lm(hyp_formula(), D[abs(D$s) <= cut99, ]); ci <- coefs(m_inf)
+  m_inf <- lm(hyp_A(), D[abs(D$s) <= cut99, ]); ci <- coefs(m_inf)
   vif <- sapply(REPS, function(v) 1 / (1 - summary(lm(reformulate(setdiff(REPS, v), v), D))$r.squared))
   data.frame(target = tg, ljung_box_q10 = unname(lb$statistic), lb_p = lb$p.value, arch_lm5 = ar["stat"], arch_p = ar["p"],
              t(setNames(ci$est[ci$term %in% paste0("s:", REPS)], paste0("drop_top1pct_", names(REPS)))),
@@ -914,7 +916,7 @@ res$diagnostics <- diag; save_tab(diag, "diagnostics")
 # Ljung-Box significant -> outline says add a second lag of dy; report that model too
 lag2 <- lapply(names(TARGETS), function(tg) {
   D <- prep(tg, conds = REPS); D$dy0b <- c(NA, head(D$dy0, -1))
-  m <- lm(update(hyp_formula(), . ~ . + dy0b), D); cf <- coefs(m); cf$target <- tg; cf[cf$term %in% paste0("s:", REPS), ] })
+  m <- lm(update(hyp_A(), . ~ . + dy0b), D); cf <- coefs(m); cf$target <- tg; cf[cf$term %in% paste0("s:", REPS), ] })
 res$lag2 <- do.call(rbind, lag2)
 
 # ---- 4-6. robustness (table 6, appendix D) -----------------------------------------
@@ -926,47 +928,47 @@ if (STAGE >= 2) {
   for (tg in names(TARGETS)) {
     # R1: alternative shock maturities
     for (sh in c("us3y", "us5y", "us10y", "us2y")) if (sh != TARGETS[[tg]]["s"])
-      rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), prep(tg, REPS, shock = sh)), paste0("R1 shock ", sh), tg)
+      rob[[length(rob) + 1]] <- pick(lm(hyp_A(), prep(tg, REPS, shock = sh)), paste0("R1 shock ", sh), tg)
     # R3: drop pairs within 3 Korean trading days of an FOMC shock
     fom <- which(A$fomc_d == 1); near <- unique(unlist(lapply(fom, function(i) (i - 3):(i + 3))))
     keep_dates <- A$date[-near[near >= 1 & near <= nrow(A)]]
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), prep(tg, REPS, filter = function(D) D$date %in% keep_dates)), "R3 drop FOMC +-3 days", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(), prep(tg, REPS, filter = function(D) D$date %in% keep_dates)), "R3 drop FOMC +-3 days", tg)
     # R4: split samples
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(trend = FALSE), prep(tg, REPS, filter = function(D) D$date < as.Date("2020-01-01"))), "R4 2010-2019", tg)
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(trend = FALSE), prep(tg, REPS, filter = function(D) D$date >= as.Date("2020-01-01"))), "R4 2020-2026", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(trend = FALSE), prep(tg, REPS, filter = function(D) D$date < as.Date("2020-01-01"))), "R4 2010-2019", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(trend = FALSE), prep(tg, REPS, filter = function(D) D$date >= as.Date("2020-01-01"))), "R4 2020-2026", tg)
     # R5: winsorize dy, dy0, s at 1% / 99%
     D <- prep(tg, REPS); wz <- function(x) { q <- quantile(x, c(.01, .99)); pmin(pmax(x, q[1]), q[2]) }
     D$dy <- wz(D$dy); D$dy0 <- wz(D$dy0); D$s <- wz(D$s)
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), D), "R5 winsorized 1%", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(), D), "R5 winsorized 1%", tg)
     # R6: conditions as 5-day averages (up to t)
     A5 <- A; for (v in REPS) A5[[v]] <- rollapplyr(A[[v]], 5, mean, fill = NA)
     Atmp <- A; A <- A5; D6 <- prep(tg, REPS); A <- Atmp
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), D6), "R6 5-day average conditions", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(), D6), "R6 5-day average conditions", tg)
     # R7: signed kr1y_gap for H1; fx_vol for H3
     alt <- c(H1 = "kr1y_gap", H2 = REPS[["H2"]], H3 = "fx_vol")
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(conds = alt), prep(tg, alt)), "R7 signed gap, fx_vol", tg, paste0("s:", alt))
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(conds = alt), prep(tg, alt)), "R7 signed gap, fx_vol", tg, paste0("s:", alt))
     # R8: st_spread replaces fut3_cum
     alt8 <- c(H1 = REPS[["H1"]], H2 = "st_spread", H3 = REPS[["H3"]])
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(conds = alt8), prep(tg, alt8)), "R8 st_spread for H2", tg, paste0("s:", alt8))
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(conds = alt8), prep(tg, alt8)), "R8 st_spread for H2", tg, paste0("s:", alt8))
     # R9 (outline 2-5): hypothesis model on the 2012-05-31 sample
-    rob[[length(rob) + 1]] <- pick(lm(hyp_formula(), prep(tg, REPS, from = START10)), "R9 sample from 2012-05-31", tg)
+    rob[[length(rob) + 1]] <- pick(lm(hyp_A(), prep(tg, REPS, from = START10)), "R9 sample from 2012-05-31", tg)
     # R10: nonlinearity in shock size. Is a condition effect only "large shocks pass through differently"?
     D <- prep(tg, REPS); D$abs_s <- abs(D$s)
-    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_A(), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
                                    c(paste0("s:", REPS), "s:abs_s"))
-    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(asym_f = TRUE), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_A(asym_f = TRUE), . ~ . + abs_s + s:abs_s), D), "R10 add s x |s|", tg,
                                    paste0(c("sp", "sm"), ":", REPS["H2"]))
     # R11: year-specific spillover (year dummies and s x year replace trend and s x trend).
     # Identifies the condition effects from day-to-day variation within each year only.
     D$yr <- factor(format(D$date, "%Y"))
-    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(trend = FALSE), . ~ . + yr + s:yr), D), "R11 within-year (s x year)", tg)
-    rob[[length(rob) + 1]] <- pick(lm(update(hyp_formula(trend = FALSE, asym_f = TRUE), . ~ . + yr + s:yr), D),
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_A(trend = FALSE), . ~ . + yr + s:yr), D), "R11 within-year (s x year)", tg)
+    rob[[length(rob) + 1]] <- pick(lm(update(hyp_A(trend = FALSE, asym_f = TRUE), . ~ . + yr + s:yr), D),
                                    "R11 within-year (s x year)", tg, paste0(c("sp", "sm"), ":", REPS["H2"]))
   }
   # R2: 10y shock split into expectations (s - s_tp) and term premium (s_tp), KW and ACM
   for (tp in c("tp_kw", "tp_acm")) {
     D <- prep("k10", REPS); D$s_tp <- A[[paste0("s_", tp)]][match(D$date, A$date)]; D$s_exp <- D$s - D$s_tp
-    m <- lm(hyp_formula(shocks = c("s_exp", "s_tp"), trend = FALSE), D)
+    m <- lm(hyp_A(shocks = c("s_exp", "s_tp"), trend = FALSE), D)
     rob[[length(rob) + 1]] <- pick(m, paste0("R2 split by ", tp), "k10", c("s_exp", "s_tp", as.vector(outer(c("s_exp", "s_tp"), REPS, paste, sep = ":"))))
   }
   rob_tab <- do.call(rbind, rob); res$robustness <- rob_tab; save_tab(rob_tab, "table6_robustness")
@@ -1110,7 +1112,7 @@ save_fig(p6, "figure6_coefficients", 10, 4)
 
 if (STAGE >= 2) {
   # figure 7: robustness of the three representative interactions
-  main <- do.call(rbind, lapply(names(TARGETS), function(tg) { cf <- hyp[[tg]]$fits$trend$coef
+  main <- do.call(rbind, lapply(names(TARGETS), function(tg) { cf <- p1_fits[[paste(tg, "A")]]$cf   # spec A
     cf <- cf[cf$term %in% paste0("s:", REPS), ]; cf$check <- "Main"; cf$target <- tg; cf }))
   rr <- rbind(main, rob_tab[!grepl("^R2", rob_tab$check), names(main)])
   rr <- rr[grepl("^s:", rr$term) & rr$term != "s:abs_s", ]      # symmetric interactions only (s+/s- and s x |s| are in the table)
