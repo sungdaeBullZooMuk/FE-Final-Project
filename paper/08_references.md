@@ -1,15 +1,16 @@
 <!--
 참고문헌 (초안). 본문에서 인용한 것만 싣는다. 제출 전에 서지 정보를 원문과 한 번 더 대조한다.
-특히 한국은행(2024)와 강현주·이효섭(2023)은 원문 확인이 남아 있다(연구개요 5-4).
+한국은행(2024)와 강현주·이효섭(2023)은 11-24에 발행처 게시본으로 제목·번호를 확인했다.
 -->
 
 ## 참고문헌
 
 - 강규호·서영경 (2022). 외국인 국채선물투자의 영향과 시사점. *한국경제포럼*, 15(3), 27–52.
 - 강현주·이효섭 (2023). 국채시장의 외국인 투자자 행태분석 및 시사점. 자본시장연구원 연구보고서 23-09.
-- 한국은행 (2024). 최근 글로벌 통화 긴축기 미국 국채금리의 국내 파급 영향 확대.
+- 한국은행 (2024). 최근 글로벌 통화긴축기 중 미국 국채금리의 국내파급영향 확대 배경 및 평가. BOK 이슈노트 제2024-8호.
 - Adrian, T., Crump, R. K., and Moench, E. (2013). Pricing the term structure with linear regressions. *Journal of Financial Economics*, 110(1), 110–138.
 - Albagli, E., Ceballos, L., Claro, S., and Romero, D. (2019). Channels of US monetary policy spillovers to international bond markets. *Journal of Financial Economics*, 134(2), 447–473.
+- Andrews, D. W. K. (1993). Tests for parameter instability and structural change with unknown change point. *Econometrica*, 61(4), 821–856.
 - Bollerslev, T. (1986). Generalized autoregressive conditional heteroskedasticity. *Journal of Econometrics*, 31(3), 307–327.
 - Cieslak, A., and Pang, H. (2021). Common shocks in stocks and bonds. *Journal of Financial Economics*, 142(2), 880–904.
 - Clark, T. E., and West, K. D. (2007). Approximately normal tests for equal predictive accuracy in nested models. *Journal of Econometrics*, 138(1), 291–311.

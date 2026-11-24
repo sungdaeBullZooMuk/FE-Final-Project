@@ -576,6 +576,22 @@ tab2 <- do.call(rbind, lapply(names(base), function(tg) { b <- base[[tg]]
              wald_up_eq_down = b$asym_test["W"], p_up_eq_down = b$asym_test["p"],
              same_day_beta = b$same_day$est[b$same_day$term == "s"], same_day_t = b$same_day$t[b$same_day$term == "s"]) }))
 res$baseline <- base; res$table2 <- tab2; save_tab(tab2, "table2_baseline")
+# exogeneity check (Granger, the US equation of a VAR): do past Korean changes predict the US shock?
+# s(t) on its own lags and lags of dy_KR. Lag 1 of dy0 is Δy(t-1), which ends at the Korean close
+# t-1, before any part of s(t); Δy(t) itself is left out because it overlaps s(t) (same-day check).
+lagk <- function(x, k) c(rep(NA, k), head(x, -k))
+granger <- do.call(rbind, lapply(names(TARGETS), function(tg) do.call(rbind, lapply(c(1, 5, 10), function(p) {
+  D <- prep(tg, conds = character(0)); stopifnot(nrow(D) == nrow(A))     # consecutive pairs, so row lags are pair lags
+  for (k in seq_len(p)) { D[[paste0("s_l", k)]] <- lagk(D$s, k); D[[paste0("kr_l", k)]] <- lagk(D$dy0, k) }
+  m <- lm(reformulate(c(paste0("s_l", 1:p), paste0("kr_l", 1:p)), "s"), D); V <- V_nw(m)
+  m0 <- lm(reformulate(paste0("s_l", 1:p), "s"), D[complete.cases(D[, c("s", paste0("kr_l", 1:p))]), ])
+  kr <- paste0("kr_l", 1:p); R <- diag(p); dimnames(R) <- list(NULL, kr); w <- wald(m, V, R)
+  # does it matter for the spillover? baseline (1) with the same Korean lags added
+  mb <- lm(reformulate(c("s", "dy0", DUMMIES, kr), "dy"), D); cb <- coefs(mb, V_nw(mb))
+  data.frame(target = tg, lags = p, n = nobs(m), sum_kr = sum(coef(m)[kr]), W = w["W"], df = p, p = w["p"],
+             dR2 = summary(m)$r.squared - summary(m0)$r.squared,
+             beta0_base = coef(base[[tg]]$model)["s"], beta0_with_lags = cb$est[cb$term == "s"], row.names = NULL) }))))
+res$granger <- granger; save_tab(granger, "granger_exogeneity")
 # shock type (Hoek, Kamin & Yoldas 2022): growth-type (mon = 0) vs monetary-type (mon = 1) shocks
 tab2b <- do.call(rbind, lapply(names(TARGETS), function(tg) {
   D <- prep(tg, conds = REPS)

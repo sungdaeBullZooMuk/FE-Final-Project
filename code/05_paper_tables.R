@@ -213,9 +213,39 @@ F1 <- paste0("<figure class='fig'><figcaption>그림 1. 자료의 시점 정렬<
              "미국 휴장일은 그날 변화가 0으로 들어가고, 결측은 보간하지 않는다. (b)는 02_analysis.R가 stopifnot으로 확인하는 정렬 사례다.", src("paper_figure1_timing.svg (05_paper_tables.R가 생성)"), "</p></figure>")
 
 # ---- 그림 2 ------------------------------------------------------------------------
-F2 <- paste0("<figure class='fig'><figcaption>그림 2. 250일 롤링 전이 계수 (점선 = 전체 표본)</figcaption>",
-             "<img src='../figures/figure5_rolling_beta.png'><p class='note'>그림 안의 영문 제목은 본문 작성 때 지운다.",
-             src("figure5_rolling_beta.png"), "</p></figure>")
+# Redrawn as SVG from res$rolling_beta (the same series as figure5_rolling_beta.png) so the
+# paper figure has Korean labels and no title inside the image.
+rb <- res$rolling_beta
+rb$tg <- ifelse(grepl("3y", rb$target), "k3", "k10")
+X0 <- 78; X1 <- 975; Y0 <- 52; Y1 <- 352; YMAX <- 0.7
+d0 <- as.numeric(as.Date("2011-01-01")); d1 <- as.numeric(as.Date("2027-01-01"))
+px <- function(d) X0 + (as.numeric(d) - d0) / (d1 - d0) * (X1 - X0)
+py <- function(b) Y1 - b / YMAX * (Y1 - Y0)
+col2 <- c(k3 = KR, k10 = US)
+path_of <- function(tg) { r <- rb[rb$tg == tg, ]
+  sprintf("<path d='M%s' fill='none' stroke='%s' stroke-width='1.6' stroke-linejoin='round'/>",
+          paste(sprintf("%.1f,%.1f", px(r$date), py(r$beta)), collapse = " L"), col2[tg]) }
+full_of <- function(tg) { b <- rb$full[rb$tg == tg][1]; ln(X0, py(b), X1, py(b), col2[tg], 1.2, "6 4") }
+yt <- seq(0, YMAX, by = 0.1); xt <- seq(2011, 2027, by = 2)
+svg2 <- paste0(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 400' font-family=\"'Apple SD Gothic Neo','Noto Sans KR',sans-serif\">",
+  "<rect width='1000' height='400' fill='#ffffff'/>",
+  paste0(sapply(yt, function(v) paste0(ln(X0, py(v), X1, py(v), if (v == 0) "#8a8984" else "#e4e3dd", 1),
+                                         tx(X0 - 10, py(v) + 6, formatC(v, format = "f", digits = 1), 16.5, 400, MUTE, "end"))), collapse = ""),
+  paste0(sapply(xt, function(y) { x <- px(as.Date(paste0(y, "-01-01")))
+    paste0(ln(x, Y1, x, Y1 + 6, MUTE, 1), tx(x, Y1 + 28, y, 16.5, 400, MUTE)) }), collapse = ""),
+  tx(X0, 30, "전이 계수", 16.5, 400, MUTE, "start"),
+  tx((X0 + X1) / 2, Y1 + 46, "창의 끝 날짜", 16.5, 400, MUTE),
+  full_of("k3"), full_of("k10"), path_of("k3"), path_of("k10"),
+  ln(590, 22, 626, 22, KR, 2.4), tx(634, 28, "3년물 (← 미 2년)", 17.5, 700, KR, "start"),
+  ln(770, 22, 806, 22, US, 2.4), tx(814, 28, "10년물 (← 미 10년)", 17.5, 700, US, "start"),
+  "</svg>")
+FIG2_SVG <- "output/figures/paper_figure2_rolling.svg"
+writeLines(svg2, FIG2_SVG, useBytes = TRUE)
+F2 <- paste0("<figure class='fig'><figcaption>그림 2. 250일 롤링 전이 계수</figcaption>",
+             "<img src='../figures/paper_figure2_rolling.svg'><p class='note'>",
+             "각 날짜의 값은 그날까지 250거래일 창에서 Δy(t+1)를 s(t)에 단순 회귀한 계수다. 점선은 식 (1)의 전체 표본 β₀(3년물 0.29, 10년물 0.30)다.",
+             src("res$rolling_beta (figure5_rolling_beta.png와 같은 계열)"), "</p></figure>")
 
 # ---- 부록 표 A1-A5 ------------------------------------------------------------------
 # A1 unit roots
@@ -271,6 +301,17 @@ TA5 <- tbl(tr(c("검정", "p", "14개 Holm p"), "th"),
   paste0("본문 판정은 묶음별(1부 6개, 3부 8개) 보정을 따른다. 이 표는 두 묶음을 합쳐도 결론이 같은지 보이는 각주용이다. 굵게 = 14개 Holm p < 0.05.",
          src("table8c_holm14_footnote.csv")))
 
+# A6 exogeneity (Granger) check
+gr <- res$granger
+TA6 <- tbl(c(th_span(c("", "", "미국 식: s(t) ← 국고채 시차", "식 (1)의 β₀"), c(1, 2, 4, 2)),
+             tr(c("목표", "시차 p", "N", "국고채 시차 계수 합", "Wald χ²(p)", "p", "ΔR² (%p)", "기준", "+ 국고채 시차"), "th")),
+  sapply(seq_len(nrow(gr)), function(i) with(gr[i, ], tr(c(tg_ko[target], lags, format(n, big.mark = ","), f(sum_kr), f(W, 2),
+    bold_if(fp(p), p < 0.05), f(100 * dR2, 2), f(beta0_base), f(beta0_with_lags))))),
+  "표 A6. 미국 충격의 외생성 점검 (Granger 검정, 3.2절)",
+  paste0("s(t)를 자기 시차 p개와 국고채 변화 Δy(t−1), …, Δy(t−p)에 회귀하고 국고채 시차 계수가 모두 0인지 HAC Wald로 검정한다. ",
+         "Δy(t)는 s(t)와 시간이 겹쳐 넣지 않는다. ΔR²는 국고채 시차를 더했을 때 늘어난 R². 오른쪽 두 열은 같은 시차를 식 (1)에 넣기 전과 후의 β₀. 굵게 = p < 0.05.",
+         src("granger_exogeneity.csv")))
+
 css <- "
 @page { size: A4; margin: 22mm 20mm; }
 body { font-family: 'AppleMyungjo', 'Nanum Myeongjo', serif; font-size: 11pt; line-height: 1.3; color: #0b0b0b; background: #fff; }
@@ -295,7 +336,7 @@ html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><titl
   "<h1>본문 표·그림 초안 (그림 1–2, 표 1–6)</h1>",
   "<p class='sub'>보고서 구성안 기준 · 수치는 output/Team_result.RData의 res$paper에서 자동 생성 · ", format(Sys.Date()),
   "</p>",
-  F1, T1, T2, F2, T3, T4, T5, T6, TA1, TA2, TA3, TA4, TA5, "</body></html>")
+  F1, T1, T2, F2, T3, T4, T5, T6, TA1, TA2, TA3, TA4, TA5, TA6, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML)
 

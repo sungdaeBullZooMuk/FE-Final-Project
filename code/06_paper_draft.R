@@ -14,7 +14,8 @@ OUT_PDF  <- "reports/본문_초안.pdf"
 
 blocks <- c("표 1" = E$T1, "표 2" = E$T2, "표 3" = E$T3, "표 4" = E$T4, "표 5" = E$T5, "표 6" = E$T6,
             "그림 1" = E$F1, "그림 2" = E$F2,
-            "표 A1" = E$TA1, "표 A2" = E$TA2, "표 A3" = E$TA3, "표 A4" = E$TA4, "표 A5" = E$TA5)
+            "표 A1" = E$TA1, "표 A2" = E$TA2, "표 A3" = E$TA3, "표 A4" = E$TA4, "표 A5" = E$TA5, "표 A6" = E$TA6)
+blocks <- gsub("<br><span class='src'>.*?</span>", "", blocks, perl = TRUE)   # source-file lines are for the table preview only
 files <- sort(list.files("paper", pattern = "\\.md$", full.names = TRUE))
 stopifnot(length(files) > 0)
 md_text <- function(f) gsub("(?s)<!--.*?-->", "", paste(readLines(f, encoding = "UTF-8"), collapse = "\n"), perl = TRUE)  # drop editor notes
@@ -39,8 +40,7 @@ code { font-family: Menlo, monospace; font-size: 9.5pt; }
 pre code { font-family: inherit; font-size: inherit; }
 ")
 html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>본문 초안</title><style>", css, "</style></head><body>",
-               "<p class='sub'>본문 초안 · ", paste(basename(files), collapse = ", "), " · 표·그림: ", paste(used, collapse = ", "),
-               " · ", format(Sys.Date()), "</p>", body, "</body></html>")
+               body, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML, " (placeholders filled: ", paste(used, collapse = ", "), ")")
 
