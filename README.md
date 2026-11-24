@@ -11,6 +11,7 @@
 Final Project/
 ├── reports/       읽을 결과물
 │   ├── 연구_프로세스_도식.pdf 연구 전체 흐름 도식 5쪽 (원본 code/process_map.html)
+│   ├── 본문_초안.pdf         논문 본문 초안 (paper/*.md + 표·그림, 지금은 5절)
 │   ├── 본문_표_초안.pdf      논문 본문 그림 1–2·표 1–6 초안 (구성안 형식)
 │   ├── 연구_쉬운설명.pdf     처음 보는 사람용 설명서
 │   └── 분석결과_정리.pdf     표·그림 포함 상세 결과
@@ -23,6 +24,7 @@ Final Project/
 │   ├── 조건별전이_변수확정_선행연구.md  변수별 선행연구 근거
 │   ├── archive/   지난 문서 (주제 적합성 검토, 설계 검토)
 │   └── reference/ 수업 안내문, 팀원 원안 docx (git 제외)
+├── paper/        논문 본문 절별 원고 (md, [[표 n]]·[[그림 n]] 자리 표시)
 ├── code/          R 코드 (아래 실행 순서)
 ├── data/          분석용 csv (Data_team.csv)
 ├── data_raw/      KRX·금감원 원자료와 수집 스크립트 (data_raw/README.md)
@@ -38,6 +40,7 @@ Rscript code/02_analysis.R              # 분석 전체 → output/
 Rscript code/03_results_report.R        # reports/분석결과_정리.pdf
 Rscript code/04_explainer.R             # reports/연구_쉬운설명.pdf
 Rscript code/05_paper_tables.R          # reports/본문_표_초안.pdf (논문 본문 그림 1–2, 표 1–6)
+Rscript code/06_paper_draft.R           # reports/본문_초안.pdf (paper/*.md에 표·그림을 넣어 조립)
 TEAM=Team3 Rscript code/00_build_submission.R   # submission/Team3_rcode.R
 ```
 
