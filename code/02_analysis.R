@@ -797,6 +797,89 @@ if (STAGE >= 2) {
   save_fig(p7, "figure7_robustness", 11, 5.5)
 }
 
+# ---- paper tables 1-6 (report outline, docs/조건별전이_보고서_구성안.md) ---------
+# Main-text tables of the paper. Built only from res, so every number equals one in the
+# tables above. Files: output/tables/paper_table*.csv; list: res$paper.
+message("paper tables")
+pt  <- list(); tgs <- names(TARGETS); p1t <- res$part1$table
+pick1 <- function(v) if (length(v)) v[1] else NA
+
+# Table 1: descriptive statistics (targets, shocks, three conditions, shock-type shares)
+v1 <- c(paste0("dy_", sapply(TARGETS, `[[`, "dy")), paste0("s_", sapply(TARGETS, `[[`, "s")), unname(REPS))
+t1 <- res$desc[match(v1, res$desc$variable), c("variable", "n", "mean", "sd", "min", "median", "max")]
+share_row <- function(lbl, x) data.frame(variable = lbl, n = NA, mean = x, sd = NA, min = NA, median = NA, max = NA)
+n2 <- res$part3_ols[res$part3_ols$test == "N2", ]
+pt$table1 <- rbind(t1,
+  share_row(paste0("mon share (", tgs, ")"), res$table2b$share_mon[match(tgs, res$table2b$target)]),
+  share_row(paste0("FLAT share (", tgs, ")"), n2$share[match(tgs, n2$target)]), make.row.names = FALSE)
+
+# Table 2: baseline spillover, with the 10 bp translation and the s.d. of the daily change
+t2 <- res$table2; rownames(t2) <- NULL
+t2$bp_per_10bp <- 10 * t2$beta0
+dy_var <- setNames(paste0("dy_", sapply(TARGETS, `[[`, "dy")), names(TARGETS))
+t2$sd_dy_bp <- res$desc$sd[match(dy_var[t2$target], res$desc$variable)]
+pt$table2 <- t2
+
+# Table 3: part 1 (pre-registered), specs A and B, plus the joint Wald test per maturity
+g1 <- function(tg, h, sp, col) pick1(p1t[p1t$target == tg & p1t$hyp == h & p1t$spec == sp, col])
+pt$table3 <- do.call(rbind, lapply(tgs, function(tg) do.call(rbind, lapply(names(P1_TERMS), function(h)
+  data.frame(target = tg, hyp = h, term = P1_TERMS[[h]],
+             est_A = g1(tg, h, "A", "est"), p_A = g1(tg, h, "A", "p"), holm_A = g1(tg, h, "A", "p_holm"),
+             est_B = g1(tg, h, "B", "est"), p_B = g1(tg, h, "B", "p"), holm_B = g1(tg, h, "B", "p_holm"),
+             verdict = res$part1$verdict$verdict[res$part1$verdict$target == tg & res$part1$verdict$hyp == h])))))
+jw <- res$part1$joint_wald
+gj <- function(tg, sp, col) pick1(jw[jw$target == tg & jw$spec == sp, col])
+pt$table3_joint <- do.call(rbind, lapply(tgs, function(tg)
+  data.frame(target = tg, W_A = gj(tg, "A", "joint_W"), p_A = gj(tg, "A", "joint_p"), holm_A = gj(tg, "A", "joint_p_holm"),
+             W_B = gj(tg, "B", "joint_W"), p_B = gj(tg, "B", "joint_p"), holm_B = gj(tg, "B", "joint_p_holm"))))
+
+# Table 4: part 3 Holm family of 8, with the effect each test is about
+eff <- function(test, tg) {
+  o <- function(cmp) pick1(res$table5$r2_oos[res$table5$target == tg & res$table5$comparison == cmp])
+  switch(substr(test, 1, 2),
+         N2 = c("coef. s x FLAT", pick1(n2$est[n2$target == tg])),
+         N3 = c("c_m - c_g", if (!is.null(res$n3)) with(res$n3[res$n3$target == tg, ], c_m - c_g) else NA),
+         N5 = c("R2_OOS of M4 vs M1", o("M4 vs M1 (N5)")),
+         N7 = c("R2_OOS of M4 vs M2", o("M4 vs M2 (N7, non-nested)"))) }
+p3t <- res$part3$table
+ef <- t(mapply(eff, p3t$test, p3t$target))
+pt$table4 <- data.frame(test = p3t$test, target = p3t$target, effect = ef[, 1], effect_value = as.numeric(ef[, 2]),
+                        stat = p3t$stat, p = p3t$p, p_holm = p3t$p_holm, p_holm_14 = p3t$p_holm_14, row.names = NULL)
+if (!is.null(res$n3)) pt$table4_n3 <- res$n3[, c("target", "c_m", "se_c_m", "c_g", "se_c_g", "c_common")]
+
+# Table 5: economic size in bp per 10 bp US shock (one column per maturity)
+e10 <- res$econ10; t5 <- data.frame(item = unique(e10$item))
+for (tg in tgs) t5[[tg]] <- e10$bp[e10$target == tg][match(t5$item, e10$item[e10$target == tg])]
+pt$table5 <- t5
+
+# Table 6: robustness of the two 10-year results (P3 s x VIX, P2 s+ x fut3). Robustness models
+# R1-R9 use the symmetric fut3 interaction (s x fut3), so it gets its own column.
+if (!is.null(res$robustness)) {
+  rb <- res$robustness; tg6 <- "k10"
+  gr <- function(chk, term, col) pick1(rb[rb$check == chk & rb$target == tg6 & rb$term == term, col])
+  rrow <- function(check, vix, fp, fs) data.frame(check = check,
+    vix_est = vix[1], vix_p = vix[2], vix_holm = vix[3], fut3p_est = fp[1], fut3p_p = fp[2], fut3p_holm = fp[3],
+    fut3sym_est = fs[1], fut3sym_p = fs[2])
+  t6 <- lapply(c("A", "B", "C", "D"), function(sp) {
+    gv <- function(term) c(g1(tg6, names(P1_TERMS)[P1_TERMS == term], sp, "est"), g1(tg6, names(P1_TERMS)[P1_TERMS == term], sp, "p"),
+                           g1(tg6, names(P1_TERMS)[P1_TERMS == term], sp, "p_holm"))
+    rrow(paste("Part 1 spec", sp), gv(P1_TERMS[["H3"]]), gv(P1_TERMS[["H2"]]), c(NA, NA)) })
+  chks <- c("R1 shock us2y", "R1 shock us3y", "R1 shock us5y", "R3 drop FOMC +-3 days", "R4 2010-2019", "R4 2020-2026",
+            "R5 winsorized 1%", "R6 5-day average conditions", "R7 signed gap, fx_vol", "R8 st_spread for H2",
+            "R9 sample from 2012-05-31", "R10 add s x |s|", "R11 within-year (s x year)")
+  t6 <- c(t6, lapply(chks, function(ch) rrow(ch,
+    c(gr(ch, "s:vix", "est"), gr(ch, "s:vix", "p"), NA), c(gr(ch, "sp:fut3_cum", "est"), gr(ch, "sp:fut3_cum", "p"), NA),
+    c(gr(ch, "s:fut3_cum", "est"), gr(ch, "s:fut3_cum", "p")))))
+  if (!is.null(res$r12)) for (zw in unique(res$r12$z_window)) for (sp in c("A", "B")) {
+    z <- res$r12[res$r12$target == tg6 & res$r12$z_window == zw & res$r12$spec == sp, ]
+    gz <- function(term) c(pick1(z$est[z$term == term]), pick1(z$p[z$term == term]), pick1(z$p_holm[z$term == term]))
+    t6[[length(t6) + 1]] <- rrow(paste0("R12 fut3 z-window ", zw, " days, spec ", sp), gz("s:vix"), gz("sp:fut3_cum"), c(NA, NA))
+  }
+  pt$table6 <- do.call(rbind, t6)
+}
+res$paper <- pt
+for (nm in names(pt)) save_tab(pt[[nm]], paste0("paper_", nm))
+
 # ---- save -------------------------------------------------------------------------
 res$pairs <- A
 res$session <- sessionInfo()
