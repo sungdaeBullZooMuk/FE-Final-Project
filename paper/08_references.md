@@ -1,0 +1,26 @@
+<!--
+참고문헌 (초안). 본문에서 인용한 것만 싣는다. 제출 전에 서지 정보를 원문과 한 번 더 대조한다.
+특히 한국은행(2024)와 강현주·이효섭(2023)은 원문 확인이 남아 있다(연구개요 5-4).
+-->
+
+## 참고문헌
+
+- 강규호·서영경 (2022). 외국인 국채선물투자의 영향과 시사점. *한국경제포럼*, 15(3), 27–52.
+- 강현주·이효섭 (2023). 국채시장의 외국인 투자자 행태분석 및 시사점. 자본시장연구원 연구보고서 23-09.
+- 한국은행 (2024). 최근 글로벌 통화 긴축기 미국 국채금리의 국내 파급 영향 확대.
+- Adrian, T., Crump, R. K., and Moench, E. (2013). Pricing the term structure with linear regressions. *Journal of Financial Economics*, 110(1), 110–138.
+- Albagli, E., Ceballos, L., Claro, S., and Romero, D. (2019). Channels of US monetary policy spillovers to international bond markets. *Journal of Financial Economics*, 134(2), 447–473.
+- Bollerslev, T. (1986). Generalized autoregressive conditional heteroskedasticity. *Journal of Econometrics*, 31(3), 307–327.
+- Cieslak, A., and Pang, H. (2021). Common shocks in stocks and bonds. *Journal of Financial Economics*, 142(2), 880–904.
+- Clark, T. E., and West, K. D. (2007). Approximately normal tests for equal predictive accuracy in nested models. *Journal of Econometrics*, 138(1), 291–311.
+- Giacomini, R., and White, H. (2006). Tests of conditional predictive ability. *Econometrica*, 74(6), 1545–1578.
+- Gilchrist, S., Yue, V., and Zakrajšek, E. (2019). U.S. monetary policy and international bond markets. *Journal of Money, Credit and Banking*, 51(S1), 127–161.
+- Hoek, J., Kamin, S., and Yoldas, E. (2022). Are higher U.S. interest rates always bad news for emerging markets? *Journal of International Economics*, 137, 103585.
+- Holm, S. (1979). A simple sequentially rejective multiple test procedure. *Scandinavian Journal of Statistics*, 6(2), 65–70.
+- Kalemli-Özcan, Ş. (2019). U.S. monetary policy and international risk spillovers. *Proceedings of the Jackson Hole Economic Policy Symposium*, Federal Reserve Bank of Kansas City.
+- Kearns, J., Schrimpf, A., and Xia, F. D. (2023). Explaining monetary spillovers: The matrix reloaded. *Journal of Money, Credit and Banking*, 55(6), 1535–1568.
+- Kim, D. H., and Wright, J. H. (2005). An arbitrage-free three-factor term structure model and the recent behavior of long-term yields and distant-horizon forward rates. Finance and Economics Discussion Series 2005-33, Board of Governors of the Federal Reserve System.
+- Miranda-Agrippino, S., and Rey, H. (2020). U.S. monetary policy and the global financial cycle. *Review of Economic Studies*, 87(6), 2754–2776.
+- Miyajima, K., Mohanty, M. S., and Chan, T. (2012). Emerging market local currency bonds: Diversification and stability. BIS Working Paper No. 391.
+- Newey, W. K., and West, K. D. (1987). A simple, positive semi-definite, heteroskedasticity and autocorrelation consistent covariance matrix. *Econometrica*, 55(3), 703–708.
+- Newey, W. K., and West, K. D. (1994). Automatic lag selection in covariance matrix estimation. *Review of Economic Studies*, 61(4), 631–653.

@@ -17,6 +17,7 @@ f  <- function(x, d = 3) ifelse(is.na(x), "–", formatC(x, format = "f", digits
 fp <- function(p) ifelse(is.na(p), "–", ifelse(p < 0.001, formatC(p, format = "e", digits = 1), formatC(p, format = "f", digits = 3)))
 bold_if <- function(txt, cond) ifelse(!is.na(cond) & cond, paste0("<b>", txt, "</b>"), txt)
 tg_ko <- c(k3 = "3년물 (← 미 2년)", k10 = "10년물 (← 미 10년)")
+tg_short_ko <- c(k3 = "3년물", k10 = "10년물")
 hyp_ko <- c(H1 = "P1 기대: s × |kr1y_gap|", H2 = "P2 수급: s⁺ × fut3", H3 = "P3 위험: s × log VIX")
 verdict_ko <- c("not rejected" = "기각 못 함", "spec-dependent" = "설정 의존",
                 "significant (opposite sign)" = "유의 (예측과 반대 부호)", "significant (predicted sign)" = "유의 (예측 부호)")
@@ -143,7 +144,7 @@ T6 <- tbl(c(th_span(c("", "P3: s × log VIX", "P2: s⁺ × fut3", "참고: s × 
             tr(c("설정 (10년물)", "계수", "p (Holm)", "계수", "p (Holm)", "계수", "p"), "th")),
   body6, "표 6. 견고성: 10년물 두 결과",
   paste0("괄호 안 Holm p는 해당 설정의 1부 6개 검정 묶음 기준이며, 1부 설정과 R12에만 있다. R1–R9는 fut3를 대칭(s × fut3)으로 넣은 식이라 s⁺ 항이 없다. ",
-         "R1의 미 2년 충격은 10년물에 짧은 만기 충격을 넣은 것이다. 3년물은 어떤 설정에서도 조건 효과가 Holm을 통과하지 않는다.",
+         "R1의 미 2년 충격은 10년물에 짧은 만기 충격을 넣은 것이다. 3년물은 Holm을 적용한 설정(1부, R12)에서 통과하는 조건 효과가 없다. 보정 없는 견고성 식에서는 2010–2019년의 s × fut3(−0.091, p < 0.001)이 유일하게 강하다.",
          src("paper_table6.csv")))
 
 # ---- 그림 1: 시점 정렬 도식 (SVG) ---------------------------------------------------
@@ -213,6 +214,60 @@ F2 <- paste0("<figure class='fig'><figcaption>그림 2. 250일 롤링 전이 계
              "<img src='../figures/figure5_rolling_beta.png'><p class='note'>그림 안의 영문 제목은 본문 작성 때 지운다.",
              src("figure5_rolling_beta.png"), "</p></figure>")
 
+# ---- 부록 표 A1-A5 ------------------------------------------------------------------
+# A1 unit roots
+ur <- res$unit_root
+used_ko <- function(x) ifelse(x == "level", "수준", ifelse(x == "250-day rolling z", "250일 z", "–"))
+TA1 <- tbl(tr(c("계열", "N", "ADF τ", "5% 임계값", "KPSS", "KPSS p", "I(1) 판정", "분석에 쓴 형태"), "th"),
+  sapply(seq_len(nrow(ur)), function(i) with(ur[i, ], tr(c(series, format(n, big.mark = ","), f(adf_tau, 2), f(adf_cv5, 2), f(kpss, 3),
+    fp(kpss_p), ifelse(I1, "예", "아니오"), used_ko(used_as))))),
+  "표 A1. 단위근 검정",
+  paste0("ADF는 상수항과 AIC 시차, KPSS는 수준 정상성 귀무가설. I(1) 판정 = ADF가 단위근을 기각하지 못하고 KPSS가 정상성을 기각한 경우(사전 규칙). ",
+         "I(1) 조건은 250일 이동 z점수로 바꿔 LASSO 후보(st_spread는 견고성 R8)에만 쓴다. 본문의 세 대표 조건은 수준 그대로다. KPSS p는 표 보간값이라 0.01–0.10에서 잘린다.", src("appendixA_unit_root.csv")))
+# A2 diagnostics
+dg <- res$diagnostics
+TA2 <- tbl(c(th_span(c("", "Ljung–Box Q(10)", "ARCH LM(5)", "VIF (설정 A 식)"), c(1, 2, 2, 3)),
+             tr(c("목표", "Q", "p", "LM", "p", "|kr1y_gap|", "fut3", "log VIX"), "th")),
+  sapply(seq_len(nrow(dg)), function(i) with(dg[i, ], tr(c(tg_ko[target], f(ljung_box_q10, 2), fp(lb_p), f(arch_lm5, 1), fp(arch_p),
+    f(vif_H1, 2), f(vif_H2, 2), f(vif_H3, 2))))),
+  "표 A2. 잔차 진단 (설정 A)",
+  paste0("잔차에 남은 자기상관은 없지만(Ljung–Box) 조건부 이분산은 강하다(ARCH LM). 그래서 표준오차는 HAC로 구하고 변동성은 GARCH-X로 따로 본다. ",
+         "VIF는 세 조건 사이의 공선성 지표다.", src("diagnostics.csv")))
+# A3 R2 decomposition (10-year, no trend, no mon)
+rb2 <- res$robustness[grepl("^R2", res$robustness$check) & res$robustness$target == "k10", ]
+r2g <- function(tp, term, col) pick_v(rb2[rb2$check == paste0("R2 split by tp_", tp) & rb2$term == term, col])
+pick_v <- function(v) if (length(v)) v[1] else NA
+terms_a3 <- c("s_exp", "s_tp", "s_exp:vix", "s_tp:vix", "s_exp:fut3_cum", "s_tp:fut3_cum", "s_exp:abs_kr1y_gap", "s_tp:abs_kr1y_gap")
+lab_a3 <- c("s_exp (기대 부분)", "s_tp (기간 프리미엄 부분)", "s_exp × log VIX", "s_tp × log VIX", "s_exp × fut3", "s_tp × fut3",
+            "s_exp × |kr1y_gap|", "s_tp × |kr1y_gap|")
+TA3 <- tbl(c(th_span(c("", "ACM 분해", "KW 분해"), c(1, 2, 2)), tr(c("항 (10년물)", "계수", "p", "계수", "p"), "th")),
+  sapply(seq_along(terms_a3), function(i) tr(c(lab_a3[i], f(r2g("acm", terms_a3[i], "est")), fp(r2g("acm", terms_a3[i], "p")),
+                                            f(r2g("kw", terms_a3[i], "est")), fp(r2g("kw", terms_a3[i], "p"))))),
+  "표 A3. 미국 10년물 충격의 기대·기간 프리미엄 분해 (사후 점검, 5.3절)",
+  paste0("s_tp = 미국 10년물 기간 프리미엄 변화(ACM: Adrian, Crump and Moench 2013; KW: Kim and Wright 2005), s_exp = s − s_tp. ",
+         "식 (2)에서 s를 두 부분으로 나눈 것(추세·mon 없음). 보정 없이 보고한다.", src("table6_robustness.csv (R2 행)")))
+# A4 out-of-sample, all comparisons
+t5o <- res$table5
+cmp_ko <- c("M1 vs M0" = "M1 vs M0 (상수 예측)", "M2 vs M1" = "M2 vs M1", "M4 vs M1 (N5)" = "M4 vs M1 (N5)",
+            "M4 vs M2 (N7, non-nested)" = "M4 vs M2 (N7, 비중첩)", "M3 vs M1" = "M3 vs M1 (LASSO)", "M3 vs M2 (non-nested)" = "M3 vs M2 (비중첩)")
+TA4 <- tbl(tr(c("목표", "비교", "N", "R²_OOS", "Clark–West p", "GW 무조건부 p", "수업 gwtest p"), "th"),
+  sapply(seq_len(nrow(t5o)), function(i) with(t5o[i, ], tr(c(tg_short_ko[target], cmp_ko[comparison], format(n, big.mark = ","),
+    paste0(f(100 * r2_oos, 2), "%"), fp(cw_p), fp(p_uncond), fp(gw_course_p))))),
+  "표 A4. 표본외 예측 비교 전체 (2014-01-10 ~ 2026-10, 1,000일 롤링)",
+  paste0("R²_OOS = 1 − MSFE(앞 모형)/MSFE(뒤 모형). Clark–West는 중첩 비교에만 쓰며 단측이다. GW 무조건부 p는 양측(본문 N7은 같은 통계량의 단측). ",
+         "M0 = 상수, M3 = 롤링 LASSO(BIC, 20일마다 재추정; 후보 8개 조건과 상호작용). 전체 표본 LASSO와 Elastic Net은 두 만기 모두 상호작용 후보 8개 중 하나도 고르지 않는다(table4_lasso.csv). ",
+         "수업 gwtest p는 수업 코드 gw.test(τ = 1)의 결과로, 절대 오차 손실의 무조건부 검정(양측)이다.", src("table5_oos.csv")))
+# A5 Holm over all 14 tests
+h14 <- res$part3$holm14
+lab14 <- function(x) { mat <- ifelse(grepl(" k3$", x), " · 3년물", " · 10년물"); x <- sub(" k(3|10)$", "", x)
+  h <- c(H1 = "P1 기대", H2 = "P2 수급 (s⁺)", H3 = "P3 위험")
+  ifelse(grepl("^P1 spec A ", x), paste0("1부 설정 A ", h[sub("^P1 spec A ", "", x)]), paste0("3부 ", test_ko[substr(x, 1, 2)])) |> paste0(mat) }
+TA5 <- tbl(tr(c("검정", "p", "14개 Holm p"), "th"),
+  sapply(seq_len(nrow(h14)), function(i) with(h14[i, ], tr(c(lab14(test), fp(p), bold_if(fp(p_holm_14), p_holm_14 < 0.05))))),
+  "표 A5. 1부(설정 A) 6개와 3부 8개를 합친 14개 Holm 보정",
+  paste0("본문 판정은 묶음별(1부 6개, 3부 8개) 보정을 따른다. 이 표는 두 묶음을 합쳐도 결론이 같은지 보이는 각주용이다. 굵게 = 14개 Holm p < 0.05.",
+         src("table8c_holm14_footnote.csv")))
+
 css <- "
 @page { size: A4; margin: 22mm 20mm; }
 body { font-family: 'AppleMyungjo', 'Nanum Myeongjo', serif; font-size: 11pt; line-height: 1.3; color: #0b0b0b; background: #fff; }
@@ -237,7 +292,7 @@ html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><titl
   "<h1>본문 표·그림 초안 (그림 1–2, 표 1–6)</h1>",
   "<p class='sub'>보고서 구성안 기준 · 수치는 output/Team_result.RData의 res$paper에서 자동 생성 · ", format(Sys.Date()),
   "</p>",
-  F1, T1, T2, F2, T3, T4, T5, T6, "</body></html>")
+  F1, T1, T2, F2, T3, T4, T5, T6, TA1, TA2, TA3, TA4, TA5, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML)
 

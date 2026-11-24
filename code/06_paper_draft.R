@@ -13,7 +13,8 @@ OUT_HTML <- "output/report/paper_draft.html"
 OUT_PDF  <- "reports/본문_초안.pdf"
 
 blocks <- c("표 1" = E$T1, "표 2" = E$T2, "표 3" = E$T3, "표 4" = E$T4, "표 5" = E$T5, "표 6" = E$T6,
-            "그림 1" = E$F1, "그림 2" = E$F2)
+            "그림 1" = E$F1, "그림 2" = E$F2,
+            "표 A1" = E$TA1, "표 A2" = E$TA2, "표 A3" = E$TA3, "표 A4" = E$TA4, "표 A5" = E$TA5)
 files <- sort(list.files("paper", pattern = "\\.md$", full.names = TRUE))
 stopifnot(length(files) > 0)
 md_text <- function(f) gsub("(?s)<!--.*?-->", "", paste(readLines(f, encoding = "UTF-8"), collapse = "\n"), perl = TRUE)  # drop editor notes
@@ -27,7 +28,8 @@ left <- regmatches(body, gregexpr("\\[\\[[^]]+\\]\\]", body))[[1]]
 if (length(left)) stop("unknown placeholders: ", paste(left, collapse = ", "))
 
 css <- paste0(E$css, "
-h2 { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 13pt; margin: 0 0 8pt; }
+h1 { font-size: 16pt; line-height: 1.35; margin: 0 0 4pt; }
+h2 { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 13pt; margin: 18pt 0 8pt; break-after: avoid; }
 h3 { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 11pt; margin: 14pt 0 5pt; break-after: avoid; }
 body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; font-size: 11pt; line-height: 1.3; }  /* team decision 11-24; the serif face mangles χ², R² */
 p { margin: 0 0 7pt; } ul { margin: 0 0 8pt; padding-left: 16pt; } li { margin: 0 0 4pt; }
