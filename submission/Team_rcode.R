@@ -562,15 +562,19 @@ for (tg in names(TARGETS)) {
   m <- lm(dy ~ s + dy0 + hol + nous + fomc_d + mpc_d, D); V <- V_nw(m)
   ma <- lm(dy ~ sp + sm + dy0 + hol + nous + fomc_d + mpc_d, D); Va <- V_nw(ma)
   R <- matrix(c(1, -1), 1, dimnames = list(NULL, c("sp", "sm")))
+  # same-day check: the US close-to-close change s(t) also covers Asian hours of Korean day t
+  # (US yields are taken near 3:30 pm New York time), so part of it may already be in y_KR(t)
+  msd <- lm(dy0 ~ s, D); csd <- coefs(msd, V_nw(msd))
   base[[tg]] <- list(model = m, coef = coefs(m, V), r2 = summary(m)$r.squared, n = nobs(m),
-                     asym = coefs(ma, Va), asym_test = wald(ma, Va, R))
+                     asym = coefs(ma, Va), asym_test = wald(ma, Va, R), same_day = csd)
 }
 tab2 <- do.call(rbind, lapply(names(base), function(tg) { b <- base[[tg]]
   cb <- b$coef; ca <- b$asym
   data.frame(target = tg, beta0 = cb$est[cb$term == "s"], t_beta0 = cb$t[cb$term == "s"],
              rho = cb$est[cb$term == "dy0"], t_rho = cb$t[cb$term == "dy0"], r2 = b$r2, n = b$n,
              beta_up = ca$est[ca$term == "sp"], beta_down = ca$est[ca$term == "sm"],
-             wald_up_eq_down = b$asym_test["W"], p_up_eq_down = b$asym_test["p"]) }))
+             wald_up_eq_down = b$asym_test["W"], p_up_eq_down = b$asym_test["p"],
+             same_day_beta = b$same_day$est[b$same_day$term == "s"], same_day_t = b$same_day$t[b$same_day$term == "s"]) }))
 res$baseline <- base; res$table2 <- tab2; save_tab(tab2, "table2_baseline")
 # shock type (Hoek, Kamin & Yoldas 2022): growth-type (mon = 0) vs monetary-type (mon = 1) shocks
 tab2b <- do.call(rbind, lapply(names(TARGETS), function(tg) {

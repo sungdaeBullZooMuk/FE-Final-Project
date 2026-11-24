@@ -53,14 +53,17 @@ T1 <- tbl(tr(c("변수", "N", "평균", "표준편차", "최소", "중앙값", "
 
 # ---- 표 2 --------------------------------------------------------------------------
 t2 <- pt$table2
-body2 <- sapply(seq_len(nrow(t2)), function(i) with(t2[i, ], tr(c(tg_ko[target],
+body2 <- sapply(seq_len(nrow(t2)), function(i) with(t2[i, ], tr(c(tg_short_ko[target],
   paste0(f(beta0), " (", f(t_beta0, 1), ")"), paste0(f(rho), " (", f(t_rho, 1), ")"), f(r2, 3), format(n, big.mark = ","),
-  f(beta_up), f(beta_down), fp(p_up_eq_down), f(bp_per_10bp, 1), f(sd_dy_bp, 1)))))
-T2 <- tbl(c(th_span(c("", "기준 모형 (1)", "상승·하락 분리", "경제적 크기"), c(1, 4, 3, 2)),
-            tr(c("목표 (← 충격)", "β₀ (t)", "ρ (t)", "R²", "N", "β 상승일", "β 하락일", "같음 p", "미 10bp → bp", "Δy 표준편차 (bp)"), "th")),
+  f(beta_up), f(beta_down), fp(p_up_eq_down), f(bp_per_10bp, 1), f(sd_dy_bp, 1),
+  paste0(f(same_day_beta), " (", f(same_day_t, 1), ")")))))
+T2 <- tbl(c(th_span(c("", "기준 모형 (1)", "상승·하락 분리", "경제적 크기", "같은 날"), c(1, 4, 3, 2, 1)),
+            tr(c("목표", "β₀ (t)", "ρ (t)", "R²", "N", "β⁺", "β⁻", "같음 p", "10bp → bp", "Δy s.d.", "Δy(t) 계수 (t)"), "th")),
   body2, "표 2. 기준 전이: 미국 금리 충격의 다음 날 국고채 전이",
-  paste0("식 (1): Δy(t+1) = α + β₀ s(t) + ρ Δy(t) + δ′D(t) + ε. D는 휴장·FOMC·금통위 더미. 괄호 안은 Newey–West(시차 9) t값. ",
-         "'같음 p'는 β 상승일 = β 하락일의 HAC Wald 검정.", src("paper_table2.csv")))
+  paste0("식 (1): Δy(t+1) = α + β₀ s(t) + ρ Δy(t) + δ′D(t) + ε. 3년물은 미 2년, 10년물은 미 10년 충격. D는 휴장·FOMC·금통위 더미. 괄호 안은 Newey–West(시차 9) t값. β⁺·β⁻는 상승·하락 충격의 계수, Δy s.d.는 국고채 일별 변화의 표준편차(bp). ",
+         "'같음 p'는 β⁺ = β⁻의 HAC Wald 검정. ",
+         "'같은 날'은 한국 t일 변화 Δy(t)를 s(t)에 회귀한 계수다. 미국 금리는 뉴욕 오후 3시 30분 무렵 값이라 s(t)의 일부는 한국 t일 장중에 일어난다(3.2절).",
+         src("paper_table2.csv")))
 
 # ---- 표 3 --------------------------------------------------------------------------
 t3 <- pt$table3; j3 <- pt$table3_joint
@@ -206,7 +209,7 @@ FIG1_SVG <- "output/figures/paper_figure1_timing.svg"
 writeLines(svg1, FIG1_SVG, useBytes = TRUE)
 F1 <- paste0("<figure class='fig'><figcaption>그림 1. 자료의 시점 정렬</figcaption>",
              "<img src='../figures/paper_figure1_timing.svg'><p class='note'>",
-             "조건은 충격보다 먼저 알려진 값(한국 t일 마감)만 쓴다. 따라서 회귀의 어떤 설명변수도 목표 Δy(t+1)보다 뒤의 정보를 담지 않는다. ",
+             "조건은 한국 t일 마감 때 알려진 값만 쓴다. 미국 금리는 뉴욕 오후 3시 30분 무렵 값이어서, (a)의 미국 장 변화 중 아시아 시간대 앞부분은 한국 t일 장중과 겹친다(3.2절, 표 2의 같은 날 점검). ",
              "미국 휴장일은 그날 변화가 0으로 들어가고, 결측은 보간하지 않는다. (b)는 02_analysis.R가 stopifnot으로 확인하는 정렬 사례다.", src("paper_figure1_timing.svg (05_paper_tables.R가 생성)"), "</p></figure>")
 
 # ---- 그림 2 ------------------------------------------------------------------------
