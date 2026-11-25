@@ -263,7 +263,7 @@ TA2 <- tbl(c(th_span(c("", "Ljung–Box Q(10)", "ARCH LM(5)", "VIF (설정 A 식
              tr(c("목표", "Q", "p", "LM", "p", "|kr1y_gap|", "fut3", "log VIX"), "th")),
   sapply(seq_len(nrow(dg)), function(i) with(dg[i, ], tr(c(tg_ko[target], f(ljung_box_q10, 2), fp(lb_p), f(arch_lm5, 1), fp(arch_p),
     f(vif_H1, 2), f(vif_H2, 2), f(vif_H3, 2))))),
-  "표 A2. 잔차 진단 (설정 A)",
+  "참고 표 R1. 잔차 진단 (설정 A, 본문 제외)",
   paste0("잔차에 남은 자기상관은 없지만(Ljung–Box) 조건부 이분산은 강하다(ARCH LM). 그래서 표준오차는 HAC로 구하고 변동성은 GARCH-X로 따로 본다. ",
          "VIF는 세 조건 사이의 공선성 지표다.", src("diagnostics.csv")))
 # A3 R2 decomposition (10-year, no trend, no mon)
@@ -276,7 +276,7 @@ lab_a3 <- c("s_exp (기대 부분)", "s_tp (기간 프리미엄 부분)", "s_exp
 TA3 <- tbl(c(th_span(c("", "ACM 분해", "KW 분해"), c(1, 2, 2)), tr(c("항 (10년물)", "계수", "p", "계수", "p"), "th")),
   sapply(seq_along(terms_a3), function(i) tr(c(lab_a3[i], f(r2g("acm", terms_a3[i], "est")), fp(r2g("acm", terms_a3[i], "p")),
                                             f(r2g("kw", terms_a3[i], "est")), fp(r2g("kw", terms_a3[i], "p"))))),
-  "표 A3. 미국 10년물 충격의 기대·기간 프리미엄 분해 (사후 점검, 5.3절)",
+  "표 A2. 미국 10년물 충격의 기대·기간 프리미엄 분해 (사후 점검, 5.3절)",
   paste0("s_tp = 미국 10년물 기간 프리미엄 변화(ACM: Adrian, Crump and Moench 2013; KW: Kim and Wright 2005), s_exp = s − s_tp. ",
          "식 (2)에서 s를 두 부분으로 나눈 것(추세·mon 없음). 보정 없이 보고한다.", src("table6_robustness.csv (R2 행)")))
 # A4 out-of-sample, all comparisons
@@ -286,7 +286,7 @@ cmp_ko <- c("M1 vs M0" = "M1 vs M0 (상수 예측)", "M2 vs M1" = "M2 vs M1", "M
 TA4 <- tbl(tr(c("목표", "비교", "N", "R²_OOS", "Clark–West p", "GW 무조건부 p", "수업 gwtest p"), "th"),
   sapply(seq_len(nrow(t5o)), function(i) with(t5o[i, ], tr(c(tg_short_ko[target], cmp_ko[comparison], format(n, big.mark = ","),
     paste0(f(100 * r2_oos, 2), "%"), fp(cw_p), fp(p_uncond), fp(gw_course_p))))),
-  "표 A4. 표본외 예측 비교 전체 (2014-01-10 ~ 2026-10, 1,000일 롤링)",
+  "참고 표 R2. 표본외 예측 비교 전체 (2014-01-10 ~ 2026-10, 1,000일 롤링, 본문 제외)",
   paste0("R²_OOS = 1 − MSFE(앞 모형)/MSFE(뒤 모형). Clark–West는 중첩 비교에만 쓰며 단측이다. GW 무조건부 p는 양측(본문 N7은 같은 통계량의 단측). ",
          "M0 = 상수, M3 = 롤링 LASSO(BIC, 20일마다 재추정; 후보 8개 조건과 상호작용). 전체 표본 LASSO와 Elastic Net은 두 만기 모두 상호작용 후보 8개 중 하나도 고르지 않는다(table4_lasso.csv). ",
          "수업 gwtest p는 수업 코드 gw.test(τ = 1)의 결과로, 절대 오차 손실의 무조건부 검정(양측)이다.", src("table5_oos.csv")))
@@ -297,7 +297,7 @@ lab14 <- function(x) { mat <- ifelse(grepl(" k3$", x), " · 3년물", " · 10년
   ifelse(grepl("^P1 spec A ", x), paste0("1부 설정 A ", h[sub("^P1 spec A ", "", x)]), paste0("3부 ", test_ko[substr(x, 1, 2)])) |> paste0(mat) }
 TA5 <- tbl(tr(c("검정", "p", "14개 Holm p"), "th"),
   sapply(seq_len(nrow(h14)), function(i) with(h14[i, ], tr(c(lab14(test), fp(p), bold_if(fp(p_holm_14), p_holm_14 < 0.05))))),
-  "표 A5. 1부(설정 A) 6개와 3부 8개를 합친 14개 Holm 보정",
+  "참고 표 R3. 1부(설정 A) 6개와 3부 8개를 합친 14개 Holm 보정 (본문 제외)",
   paste0("본문 판정은 묶음별(1부 6개, 3부 8개) 보정을 따른다. 이 표는 두 묶음을 합쳐도 결론이 같은지 보이는 각주용이다. 굵게 = 14개 Holm p < 0.05.",
          src("table8c_holm14_footnote.csv")))
 
@@ -307,10 +307,121 @@ TA6 <- tbl(c(th_span(c("", "", "미국 식: s(t) ← 국고채 시차", "식 (1)
              tr(c("목표", "시차 p", "N", "국고채 시차 계수 합", "Wald χ²(p)", "p", "ΔR² (%p)", "기준", "+ 국고채 시차"), "th")),
   sapply(seq_len(nrow(gr)), function(i) with(gr[i, ], tr(c(tg_ko[target], lags, format(n, big.mark = ","), f(sum_kr), f(W, 2),
     bold_if(fp(p), p < 0.05), f(100 * dR2, 2), f(beta0_base), f(beta0_with_lags))))),
-  "표 A6. 미국 충격의 외생성 점검 (Granger 검정, 3.2절)",
+  "표 A3. 미국 충격의 외생성 점검 (Granger 검정, 3.2절)",
   paste0("s(t)를 자기 시차 p개와 국고채 변화 Δy(t−1), …, Δy(t−p)에 회귀하고 국고채 시차 계수가 모두 0인지 HAC Wald로 검정한다. ",
          "Δy(t)는 s(t)와 시간이 겹쳐 넣지 않는다. ΔR²는 국고채 시차를 더했을 때 늘어난 R². 오른쪽 두 열은 같은 시차를 식 (1)에 넣기 전과 후의 β₀. 굵게 = p < 0.05.",
          src("granger_exogeneity.csv")))
+
+# ---- 4부 (design v7): 표 7 GARCH-X·변동성 예측, 표 8 VaR, 그림 3 여러 날 전이·분산분해, 부록 표 A7 ----
+P4 <- res$part4
+stopifnot(!is.null(P4))
+gxv <- function(tg, model, term, col = "est") { r <- P4$garchx[P4$garchx$target == tg & P4$garchx$model == model & P4$garchx$term == term, col]; if (length(r)) r else NA }
+cf_se <- function(tg, model, term) paste0(f(gxv(tg, model, term), 3), "<br><span class='se'>(", f(gxv(tg, model, term, "se"), 3), ")</span>")
+row7 <- function(lab, model, term) tr(c(lab, cf_se("k3", model, term), "", "", "", cf_se("k10", model, term), "", "", ""))
+tst <- P4$tests; vc <- P4$vol_compare
+test_row <- function(code, lab, eff_fmt) {
+  cells <- lab
+  for (tg in names(tg_ko)) { r <- tst[startsWith(tst$test, code) & tst$target == tg, ]
+    cells <- c(cells, eff_fmt(r$effect_value), f(ifelse(abs(r$stat) < 0.005, 0, r$stat), 2), fp(r$p), bold_if(fp(r$p_holm), r$p_holm < 0.05)) }
+  tr(cells) }
+pctf <- function(x) paste0(f(100 * x, 2), "%")
+T7 <- tbl(c(th_span(c("", "3년물", "10년물"), c(1, 4, 4)),
+            tr(c("(a) 미리 정한 검정 (Holm 8개)", "효과", "통계량", "p", "Holm p", "효과", "통계량", "p", "Holm p"), "th")),
+  c(test_row("V1", "V1 d(log VIX) > 0 (LR, χ̄²)", function(x) f(x, 3)),
+    test_row("V2", "V2 c_hi = c_lo (LR, 양측)", function(x) f(x, 3)),
+    test_row("V3", "V3 G1 vs G0: 미국 충격 (QLIKE, DMW)", pctf),
+    test_row("V4", "V4 G2 vs G1: + log VIX (QLIKE, DMW)", pctf),
+    tr(c("<b>(b) GARCH-X 추정 (Student t)</b>", rep("", 8)), cls = "sec")),
+  "표 7. 변동성 전이 (4부): GARCH-X와 변동성 예측",
+  paste0("분산식 h(t+1) = ω + α ε(t)² + β h(t) + c·s(t)²/100 + d·log VIX(t). V1은 d = 0을 c만 있는 GARCH-X와 비교하는 우도비 검정이며 d ≥ 0 제약 때문에 χ̄²(50:50)를 쓴다. ",
+         "V2는 c를 VIX가 중앙값보다 높은 날(c_hi)과 낮은 날(c_lo)로 나눈다(평균식에 HV, s × HV 포함). 효과 = c_hi − c_lo. ",
+         "V3·V4는 1,000일 롤링 창(20일마다 재추정)의 1일 앞 분산 예측 3,140개를 M1 예측오차 제곱(하한 0.01)에 대해 QLIKE로 비교한 DMW 단측 검정이다. 효과 = 상대 QLIKE 개선(양수 = 큰 모형이 나음). ",
+         "설계는 결과 전에 커밋했다(docs/조건별전이_4부_변동성설계.md). 굵게 = Holm p < 0.05."))
+# GARCH-X coefficient panel appended as extra rows
+T7 <- sub("</table>", paste0(
+  row7("α (ARCH)", "V1: c + d logVIX", "alpha1"), row7("β (GARCH)", "V1: c + d logVIX", "beta1"),
+  row7("c (미국 충격² / 100)", "V1: c + d logVIX", "vxreg1"), row7("d (log VIX)", "V1: c + d logVIX", "vxreg2"),
+  "</table>"), T7, fixed = TRUE)
+T7 <- gsub("<tr class='sec'><td><b>\\(b\\)[^<]*</b></td>(<td></td>){8}</tr>",
+           "<tr class='sec'><td colspan='9'><b>(b) V1 모형의 분산식 계수 (괄호: robust 표준오차)</b></td></tr>", T7)
+
+vr <- P4$var
+var_row <- function(m) { cells <- m
+  for (tg in names(tg_ko)) for (q in c(0.01, 0.05)) { r <- vr[vr$target == tg & vr$level == q & vr$model == m, ]
+    cells <- c(cells, paste0(f(100 * r$rate, 2), "%"), fp(r$kupiec_p)) }
+  tr(cells) }
+model_ko <- c(RiskMetrics = "RiskMetrics (λ = 0.94)", G0 = "G0 GARCH-t", G1 = "G1 + 미국 충격", G2 = "G2 + 미국 충격 + log VIX")
+T8 <- tbl(c(th_span(c("", "3년물", "10년물"), c(1, 4, 4)),
+            th_span(c("", "1% VaR", "5% VaR", "1% VaR", "5% VaR"), c(1, 2, 2, 2, 2)),
+            tr(c("모형", "위반율", "Kupiec p", "위반율", "Kupiec p", "위반율", "Kupiec p", "위반율", "Kupiec p"), "th")),
+  sapply(names(model_ko), function(m) sub(paste0("<td>", m, "</td>"), paste0("<td>", model_ko[m], "</td>"), var_row(m), fixed = TRUE)),
+  "표 8. 국고채 금리 상승 위험의 1일 VaR (기술 분석)",
+  paste0("국고채 금리 상승(채권 가격 하락)을 손실로 본 위쪽 꼬리 VaR. 표 7과 같은 롤링 예측 3,140일. 위반율의 기대값은 1%와 5%이고, Kupiec 검정은 위반율이 기대값과 같은지를 본다(p가 작으면 VaR가 틀림). ",
+         "RiskMetrics는 M1 예측오차의 EWMA 분산과 정규 분위수, G 모형은 Student t 분위수를 쓴다. 보정 없는 기술 분석이다."))
+
+# figure 3: (a) direct multi-horizon beta_h for the 10y pair by shock type, (b) rolling FEVD US share
+mh <- P4$multi_horizon[P4$multi_horizon$target == "k10", ]
+rf <- P4$var_model$rolling_fevd
+W3 <- 1000; H3 <- 380
+ax_a <- list(x0 = 70, x1 = 470, y0 = 50, y1 = 320, ymax = 0.6)
+ax_b <- list(x0 = 560, x1 = 975, y0 = 50, y1 = 320, ymax = 0.3)
+pxa <- function(h) ax_a$x0 + (h - 1) / 9 * (ax_a$x1 - ax_a$x0); pya <- function(b) ax_a$y1 - b / ax_a$ymax * (ax_a$y1 - ax_a$y0)
+rd0 <- as.numeric(as.Date("2014-01-01")); rd1 <- as.numeric(as.Date("2027-01-01"))
+pxb <- function(d) ax_b$x0 + (as.numeric(d) - rd0) / (rd1 - rd0) * (ax_b$x1 - ax_b$x0); pyb <- function(v) ax_b$y1 - v / ax_b$ymax * (ax_b$y1 - ax_b$y0)
+pline <- function(x, y, col, w = 2, dash = NULL) sprintf("<path d='M%s' fill='none' stroke='%s' stroke-width='%g'%s stroke-linejoin='round'/>",
+  paste(sprintf("%.1f,%.1f", x, y), collapse = " L"), col, w, if (is.null(dash)) "" else paste0(" stroke-dasharray='", dash, "'"))
+GRY <- "#8a8984"
+svg3 <- paste0(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ", W3, " ", H3, "' font-family=\"'Apple SD Gothic Neo','Noto Sans KR',sans-serif\">",
+  "<rect width='", W3, "' height='", H3, "' fill='#ffffff'/>",
+  paste0(sapply(seq(0, ax_a$ymax, 0.1), function(v) paste0(ln(ax_a$x0, pya(v), ax_a$x1, pya(v), if (v == 0) GRY else "#e4e3dd", 1),
+    tx(ax_a$x0 - 8, pya(v) + 5, formatC(v, format = "f", digits = 1), 15, 400, MUTE, "end"))), collapse = ""),
+  paste0(sapply(1:10, function(h) tx(pxa(h), ax_a$y1 + 24, h, 15, 400, MUTE)), collapse = ""),
+  tx((ax_a$x0 + ax_a$x1) / 2, ax_a$y1 + 46, "h (한국 거래일)", 15, 400, MUTE),
+  tx(ax_a$x0, 24, "(a) 10년물: h일 누적 전이 β_h", 16.5, 700, INK, "start"),
+  pline(pxa(mh$h), pya(mh$beta_monetary), US, 2.4), pline(pxa(mh$h), pya(mh$beta_growth), KR, 2.4), pline(pxa(mh$h), pya(mh$beta), GRY, 1.6, "5 4"),
+  tx(pxa(10) - 4, pya(mh$beta_monetary[10]) - 10, "통화정책형", 15, 700, US, "end"),
+  tx(pxa(10) - 4, pya(mh$beta_growth[10]) + 22, "성장형", 15, 700, KR, "end"),
+  tx(pxa(1) + 4, pya(mh$beta[1]) + 24, "전체", 14, 400, GRY, "start"),
+  paste0(sapply(seq(0, ax_b$ymax, 0.1), function(v) paste0(ln(ax_b$x0, pyb(v), ax_b$x1, pyb(v), if (v == 0) GRY else "#e4e3dd", 1),
+    tx(ax_b$x0 - 8, pyb(v) + 5, paste0(round(100 * v), "%"), 15, 400, MUTE, "end"))), collapse = ""),
+  paste0(sapply(seq(2014, 2026, 4), function(y) { x <- pxb(as.Date(paste0(y, "-01-01"))); paste0(ln(x, ax_b$y1, x, ax_b$y1 + 5, MUTE, 1), tx(x, ax_b$y1 + 24, y, 15, 400, MUTE)) }), collapse = ""),
+  tx((ax_b$x0 + ax_b$x1) / 2, ax_b$y1 + 46, "창의 끝 날짜", 15, 400, MUTE),
+  tx(ax_b$x0, 24, "(b) 국고채 예측오차 분산 중 미국 충격 몫", 16.5, 700, INK, "start"),
+  pline(pxb(rf$end_date), pyb(rf$us_share_kr3), KR, 1.8), pline(pxb(rf$end_date), pyb(rf$us_share_kr10), US, 1.8),
+  ln(ax_b$x0 + 10, ax_b$y0 + 6, ax_b$x0 + 40, ax_b$y0 + 6, KR, 2.4), tx(ax_b$x0 + 46, ax_b$y0 + 11, "3년물", 15, 700, KR, "start"),
+  ln(ax_b$x0 + 110, ax_b$y0 + 6, ax_b$x0 + 140, ax_b$y0 + 6, US, 2.4), tx(ax_b$x0 + 146, ax_b$y0 + 11, "10년물", 15, 700, US, "start"),
+  "</svg>")
+FIG3_SVG <- "output/figures/paper_figure3_horizon_fevd.svg"
+writeLines(svg3, FIG3_SVG, useBytes = TRUE)
+F3 <- paste0("<figure class='fig'><figcaption>그림 3. 전이는 며칠 남는가, 시기에 따라 얼마인가</figcaption>",
+             "<img src='../figures/paper_figure3_horizon_fevd.svg'><p class='note'>",
+             "(a) y(t+h) − y(t)를 s(t)에 회귀한 직접 다단계 계수(HAC 시차 max(9, h)). 통화정책형·성장형은 s × mon을 넣은 같은 식. ",
+             "(b) 4변수 VAR[미 2년, 미 10년, 국고 3년, 국고 10년](시차 ", P4$var_model$lag_bic, ", BIC)을 1,000일 창으로 20일마다 추정해 구한 10일 예측오차 분산분해에서 미국 두 충격의 몫. Cholesky 순서는 시간 순서(미국 → 한국)다.",
+             src("res$part4$multi_horizon, res$part4$var_model$rolling_fevd"), "</p></figure>")
+
+# appendix A7: supplementary GARCH-X checks, diagnostics, VAR Granger, cointegration
+sp <- P4$supp; dg <- P4$diag; co <- P4$coint; gv <- P4$var_model$granger
+chk_ko4 <- c("US up vs down shock: c+ = c-" = "미 금리 상승 vs 하락 충격: c⁺ = c⁻",
+             "P1 split: c(G high) = c(G low)" = "P1 분할: c(G 높음) = c(G 낮음)",
+             "P2 split: c+(F high) = c+(F low)" = "P2 분할: c⁺(F 높음) = c⁺(F 낮음)",
+             "V1 under gjrGARCH: d > 0 (chi-bar)" = "V1을 gjrGARCH로: d > 0 (χ̄²)")
+TA7 <- tbl(c(th_span(c("", "3년물", "10년물"), c(1, 3, 3)), tr(c("보조 점검 (보정 없음)", "a", "b", "p", "a", "b", "p"), "th")),
+  c(sapply(names(chk_ko4), function(k) { cells <- chk_ko4[k]
+      for (tg in names(tg_ko)) { r <- sp[sp$check == k & sp$target == tg, ]; cells <- c(cells, f(r$a, 3), f(r$b, 3), bold_if(fp(r$p), r$p < 0.05)) }
+      tr(cells) }),
+    tr(c("표준화 잔차 Ljung–Box(10) p: z / z² (V1 모형)", "", fp(dg$lb_z[dg$target == "k3" & dg$model == "V1"]), fp(dg$lb_z2[dg$target == "k3" & dg$model == "V1"]),
+         "", fp(dg$lb_z[dg$target == "k10" & dg$model == "V1"]), fp(dg$lb_z2[dg$target == "k10" & dg$model == "V1"])), cls = "sec"),
+    tr(c("공적분: Phillips–Ouliaris Pz (5% 임계값)", f(co$po_stat[2], 2), f(co$po_cv5[2], 2), ifelse(co$po_reject[2], "기각", "유지"),
+         f(co$po_stat[1], 2), f(co$po_cv5[1], 2), ifelse(co$po_reject[1], "기각", "유지"))),
+    tr(c("공적분: Johansen trace r = 0 (5% 임계값)", f(co$jo_r0[2], 2), f(co$jo_r0_cv5[2], 2), ifelse(co$jo_reject_r0[2], "기각", "유지"),
+         f(co$jo_r0[1], 2), f(co$jo_r0_cv5[1], 2), ifelse(co$jo_reject_r0[1], "기각", "유지"))),
+    paste0("<tr class='sec'><td colspan='7'>VAR Granger (두 만기 함께): 미국 → 국고채 F ", f(gv$F[gv$cause == "US -> KTB"], 2), ", p ", fp(gv$p[gv$cause == "US -> KTB"]),
+           " · 국고채 → 미국 F ", f(gv$F[gv$cause == "KTB -> US"], 2), ", p ", ifelse(gv$p[gv$cause == "KTB -> US"] < 1e-10, "< 1e-10", fp(gv$p[gv$cause == "KTB -> US"])), "</td></tr>")),
+  "표 A4. 4부 보조 점검: GARCH-X 변형, 진단, 공적분, VAR",
+  paste0("a, b: 상승·하락 행은 c⁺, c⁻; 분할 행은 조건이 높은 날과 낮은 날의 c; gjrGARCH 행은 d와 비대칭 계수 γ. 공적분 행의 a = 통계량, b = 5% 임계값, p 열 = 귀무가설(공적분 없음)의 기각 여부. ",
+         "공적분 짝은 국고 3년–미 2년, 국고 10년–미 10년 수준(한국 t일 종가, 그 전 마지막 미국 종가). ",
+         "VAR Granger의 국고채 → 미국 방향은 한 행의 국고채 시차 Δy(t)가 s(t)의 앞부분과 시간이 겹치는 기계적 관계를 포함한다(3.2절, 표 A3은 이를 빼고 검정)."))
 
 css <- "
 @page { size: A4; margin: 22mm 20mm; }
@@ -329,14 +440,14 @@ tr:last-child td { border-bottom: 1.4px solid #0b0b0b; }
 tr.sec td { padding-top: 6pt; } tr.joint td { border-top: 0.5px solid #c9c8c2; color: #3a3a38; }
 tr.main td { background: #f3f3f0; } tr.ref td { color: #52514e; border-top: 0.5px solid #c9c8c2; }
 .note { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 8pt; line-height: 1.4; color: #3a3a38; margin: 4pt 0 0; }
-.src { color: #8a8984; }
+.src { color: #8a8984; } .se { color: #5b5a55; font-size: 7.6pt; }
 .fig img { display: block; width: 100%; border: 0.5px solid #e4e3dd; }
 "
 html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>본문 표 초안</title><style>", css, "</style></head><body>",
   "<h1>본문 표·그림 초안 (그림 1–2, 표 1–6)</h1>",
   "<p class='sub'>보고서 구성안 기준 · 수치는 output/Team_result.RData의 res$paper에서 자동 생성 · ", format(Sys.Date()),
   "</p>",
-  F1, T1, T2, F2, T3, T4, T5, T6, TA1, TA2, TA3, TA4, TA5, TA6, "</body></html>")
+  F1, T1, T2, F2, T3, T4, T5, T6, T7, T8, F3, TA1, TA2, TA3, TA4, TA5, TA6, TA7, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML)
 

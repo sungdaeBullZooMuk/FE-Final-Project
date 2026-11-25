@@ -27,12 +27,18 @@
 #     C/D with mon as robustness (4-3a); part 3 = N2 FLAT, N3 GARCH-X by shock type,
 #     N5 M4 vs M1, N7 M4 vs M2 (no mon in M1/M2), Holm over the 8 tests.
 #     The older 4-3 tables (with mon) and R1-R11 (spec C base) are kept for reference.
+#   - Design v7 (docs/조건별전이_4부_변동성설계.md, committed before running): part 4 =
+#     volatility spillover with course models (4-9): GARCH-X with log VIX as a persistent
+#     covariate (V1), s^2 coefficient by VIX regime (V2), rolling GARCH volatility forecasts
+#     compared by QLIKE/DMW (V3, V4); Holm over the 8 tests. VaR, direct multi-horizon
+#     regressions, a 4-variable VAR and cointegration tests are descriptive.
+#     The rolling GARCH forecasts (ugarchroll) take several minutes; a 'parallel' cluster is used.
 # =============================================================================
 
 suppressPackageStartupMessages({
   library(sandwich); library(lmtest); library(zoo)
   library(urca); library(tseries); library(glmnet)
-  library(strucchange); library(rugarch); library(ggplot2)
+  library(strucchange); library(rugarch); library(ggplot2); library(vars)
 })
 
 # ---- 0. settings -----------------------------------------------------------------
@@ -750,6 +756,206 @@ if (STAGE >= 3) {
                lr = lr, signed_root = sign(dc) * sqrt(lr), p_one = pnorm(-sign(dc) * sqrt(lr)),
                wald_t = dc / se_d, wald_p_one = pnorm(-dc / se_d), boundary = boundary, row.names = NULL) }))
   res$n3 <- n3; save_tab(n3, "table8b_n3_garchx")
+}
+
+# ---- 4-9. Part 4 (design v7, docs/조건별전이_4부_변동성설계.md): volatility spillover ----
+# Pre-registered before running (commit 1a76750). Confirmatory: V1-V4 x 2 maturities, Holm 8.
+# Descriptive (no correction): supplementary GARCH-X splits, VaR, direct multi-horizon regressions,
+# 4-variable VAR, cointegration.
+if (STAGE >= 3) {
+  message("4-9 part 4: GARCH-X with log VIX, volatility forecasts, VaR, multi-horizon, VAR, cointegration")
+  P4 <- list()
+  lr_bound <- function(lr) 0.5 * pchisq(max(lr, 0), 1, lower.tail = FALSE)   # H0 on the boundary: 50:50 chi2(0), chi2(1)
+  gx_spec <- function(mx, vx, model = "sGARCH") {
+    sp <- ugarchspec(variance.model = list(model = model, garchOrder = c(1, 1), external.regressors = vx),
+                     mean.model = list(armaOrder = c(0, 0), include.mean = TRUE, external.regressors = mx),
+                     distribution.model = "std")
+    if (!is.null(vx)) { k <- ncol(vx); nm <- paste0("vxreg", seq_len(k))
+      setbounds(sp) <- setNames(rep(list(c(0, 100)), k), nm); setstart(sp) <- setNames(as.list(rep(0.1, k)), nm) }
+    sp
+  }
+  gx_fit <- function(mx, vx, y, model = "sGARCH") {
+    f <- ugarchfit(gx_spec(mx, vx, model), y, solver = "hybrid")
+    if (f@fit$convergence != 0) stop("GARCH-X did not converge")
+    f
+  }
+  vx_row <- function(f, lab) { cf <- coef(f); rc <- f@fit$robust.matcoef; v <- grep("^vxreg", names(cf), value = TRUE)
+    data.frame(model = lab, term = c("alpha1", "beta1", v), est = cf[c("alpha1", "beta1", v)],
+               se = rc[c("alpha1", "beta1", v), 2], loglik = likelihood(f), row.names = NULL) }
+  lb_row <- function(f) { z <- as.numeric(residuals(f, standardize = TRUE))
+    c(lb_z = Box.test(z, 10, "Ljung-Box")$p.value, lb_z2 = Box.test(z^2, 10, "Ljung-Box")$p.value) }
+  raw <- function(D, v) { x <- A[[v]][match(D$date, A$date)]; stopifnot(!anyNA(x)); x }
+
+  # ---- 4-1: V1 (d log VIX in the variance), V2 (s^2 coefficient by VIX regime) + supplementary ----
+  gx <- list(); gtest <- list(); gsupp <- list(); gdiag <- list()
+  for (tg in names(TARGETS)) {
+    D <- prep(tg, conds = character(0)); lv <- raw(D, "vix")
+    mx <- as.matrix(D[, c("s", "dy0", DUMMIES)]); s2 <- D$s^2 / 100
+    f_c  <- gx_fit(mx, cbind(s2), D$dy)                        # c only (table 7)
+    f_v1 <- gx_fit(mx, cbind(s2, lv), D$dy)                    # V1: + d log VIX
+    lr1  <- 2 * (likelihood(f_v1) - likelihood(f_c))
+    hv <- 1 * (lv > median(lv)); mx2 <- cbind(mx, hv = hv, shv = D$s * hv)
+    f_u <- gx_fit(mx2, cbind(s2 * hv, s2 * (1 - hv), lv), D$dy)  # V2 unrestricted: c_hi, c_lo
+    f_r <- gx_fit(mx2, cbind(s2, lv), D$dy)                      # V2 restricted: common c
+    lr2 <- max(0, 2 * (likelihood(f_u) - likelihood(f_r))); cu <- coef(f_u)
+    gx[[tg]] <- rbind(data.frame(target = tg, vx_row(f_c, "GARCH-X: c")), data.frame(target = tg, vx_row(f_v1, "V1: c + d logVIX")),
+                      data.frame(target = tg, vx_row(f_u, "V2: c_hi, c_lo + d logVIX")))
+    gtest[[tg]] <- rbind(
+      data.frame(test = "V1 d(logVIX) > 0 (LR, chi-bar)", target = tg, effect = "d", effect_value = coef(f_v1)["vxreg2"],
+                 stat = lr1, p = lr_bound(lr1), boundary = coef(f_v1)["vxreg2"] < 1e-6, row.names = NULL),
+      data.frame(test = "V2 c_hi = c_lo (LR, two-sided)", target = tg, effect = "c_hi - c_lo", effect_value = cu["vxreg1"] - cu["vxreg2"],
+                 stat = lr2, p = pchisq(lr2, 1, lower.tail = FALSE), boundary = any(cu[c("vxreg1", "vxreg2")] < 1e-6), row.names = NULL))
+    gdiag[[tg]] <- data.frame(target = tg, model = c("GARCH-X: c", "V1"), rbind(lb_row(f_c), lb_row(f_v1)), row.names = NULL)
+
+    # supplementary (no correction): asymmetry of the US shock, P1/P2 splits, gjrGARCH
+    sp2 <- pmax(D$s, 0)^2 / 100; sm2 <- pmin(D$s, 0)^2 / 100
+    f_a <- gx_fit(mx, cbind(sp2, sm2, lv), D$dy); ca <- coef(f_a)
+    lra <- max(0, 2 * (likelihood(f_a) - likelihood(f_v1)))
+    sup <- data.frame(check = "US up vs down shock: c+ = c-", target = tg, a = ca["vxreg1"], b = ca["vxreg2"],
+                      lr = lra, p = pchisq(lra, 1, lower.tail = FALSE), row.names = NULL)
+    split_test <- function(hz, lab, up_only = FALSE) {
+      m2 <- cbind(mx, hz = hz, shz = D$s * hz)
+      if (up_only) { vu <- cbind(sp2 * hz, sp2 * (1 - hz), sm2, lv); vr <- cbind(sp2, sm2, lv) }
+      else         { vu <- cbind(s2 * hz, s2 * (1 - hz), lv);       vr <- cbind(s2, lv) }
+      fu <- gx_fit(m2, vu, D$dy); fr <- gx_fit(m2, vr, D$dy); lr <- max(0, 2 * (likelihood(fu) - likelihood(fr)))
+      data.frame(check = lab, target = tg, a = coef(fu)["vxreg1"], b = coef(fu)["vxreg2"], lr = lr,
+                 p = pchisq(lr, 1, lower.tail = FALSE), row.names = NULL)
+    }
+    sup <- rbind(sup, split_test(1 * (raw(D, "abs_kr1y_gap") > median(raw(D, "abs_kr1y_gap"))), "P1 split: c(G high) = c(G low)"),
+                 split_test(1 * (raw(D, "fut3_cum") > median(raw(D, "fut3_cum"))), "P2 split: c+(F high) = c+(F low)", up_only = TRUE))
+    f_g0 <- gx_fit(mx, cbind(s2), D$dy, "gjrGARCH"); f_g1 <- gx_fit(mx, cbind(s2, lv), D$dy, "gjrGARCH")
+    lrg <- 2 * (likelihood(f_g1) - likelihood(f_g0))
+    sup <- rbind(sup, data.frame(check = "V1 under gjrGARCH: d > 0 (chi-bar)", target = tg, a = coef(f_g1)["vxreg2"],
+                                 b = coef(f_g1)["gamma1"], lr = lrg, p = lr_bound(lrg), row.names = NULL))
+    gsupp[[tg]] <- sup
+  }
+  P4$garchx <- do.call(rbind, gx); P4$supp <- do.call(rbind, gsupp); P4$diag <- do.call(rbind, gdiag)
+
+  # ---- 4-2: rolling volatility forecasts G0 / G1 / G2, QLIKE + DMW (course dmwtestQLIKE) ----
+  dmw_loss <- function(l1, l2) {          # same HAC variance as the course dmwtest / dmwtestQLIKE
+    dt <- l1 - l2; nf <- length(dt); e <- dt - mean(dt); s0 <- sum(e^2) / nf; q <- round(nf^(1 / 3)); s2 <- 0
+    for (L in seq_len(q)) s2 <- s2 + (1 - L / (q + 1)) * sum(e[(L + 1):nf] * e[1:(nf - L)]) / nf
+    DMW <- sqrt(nf) * mean(dt) / sqrt(s0 + 2 * s2); c(DMW = DMW, p_one = pnorm(-DMW))   # H1: model 2 has smaller loss
+  }
+  qlike <- function(px, h) px / h - log(px / h) - 1
+  cl <- if (requireNamespace("parallel", quietly = TRUE)) parallel::makeCluster(min(4, parallel::detectCores() - 1)) else NULL
+  vf <- list(); vcmp <- list()
+  for (tg in names(TARGETS)) {
+    D <- prep(tg, conds = character(0)); lv <- raw(D, "vix")
+    mx <- as.matrix(D[, c("s", "dy0", DUMMIES)]); s2 <- D$s^2 / 100
+    nf <- if (nzchar(Sys.getenv("P4_TEST"))) 60 else nrow(D) - W   # P4_TEST: quick pipeline check
+    roll <- function(vx) {
+      r <- ugarchroll(gx_spec(mx, vx), D$dy, n.ahead = 1, forecast.length = nf, refit.every = STEP_H,
+                      refit.window = "moving", window.size = W, solver = "hybrid", calculate.VaR = FALSE, cluster = cl)
+      if (convergence(r) != 0) r <- resume(r, solver = "gosolnp", cluster = cl)
+      stopifnot(convergence(r) == 0)
+      as.data.frame(r, which = "density")[, c("Mu", "Sigma", "Shape", "Realized")]
+    }
+    g0 <- roll(NULL); g1 <- roll(cbind(s2)); g2 <- roll(cbind(s2, lv))
+    i <- (nrow(D) - nf + 1):nrow(D); m1 <- res$oos[[tg]]$forecasts$M1[match(D$date[i], res$oos[[tg]]$forecasts$date)]
+    stopifnot(!anyNA(m1), isTRUE(all.equal(g0$Realized, D$dy[i])))
+    px <- pmax((D$dy[i] - m1)^2, 0.01)                         # volatility proxy: squared M1 forecast error (floor 0.01 bp^2)
+    vf[[tg]] <- data.frame(date = D$date[i], dy = D$dy[i], m1 = m1, px = px,
+                           mu0 = g0$Mu, h0 = g0$Sigma^2, nu0 = g0$Shape, mu1 = g1$Mu, h1 = g1$Sigma^2, nu1 = g1$Shape,
+                           mu2 = g2$Mu, h2 = g2$Sigma^2, nu2 = g2$Shape)
+    L <- lapply(c(G0 = "h0", G1 = "h1", G2 = "h2"), function(h) qlike(px, vf[[tg]][[h]]))
+    M <- lapply(c(G0 = "h0", G1 = "h1", G2 = "h2"), function(h) (px - vf[[tg]][[h]])^2)
+    one <- function(lab, a, b) { dq <- dmw_loss(L[[a]], L[[b]]); dm <- dmw_loss(M[[a]], M[[b]])
+      data.frame(test = lab, target = tg, n = length(px), qlike_a = mean(L[[a]]), qlike_b = mean(L[[b]]),
+                 mse_a = mean(M[[a]]), mse_b = mean(M[[b]]), stat = dq["DMW"], p = dq["p_one"],
+                 dmw_mse = dm["DMW"], p_mse = dm["p_one"], row.names = NULL) }
+    vcmp[[tg]] <- rbind(one("V3 G1 (s^2) vs G0 (QLIKE, DMW one-sided)", "G0", "G1"),
+                        one("V4 G2 (s^2 + logVIX) vs G1 (QLIKE, DMW one-sided)", "G1", "G2"))
+  }
+  if (!is.null(cl)) parallel::stopCluster(cl)
+  P4$vol_forecasts <- vf; P4$vol_compare <- do.call(rbind, vcmp)
+
+  # Holm over the 8 confirmatory tests (V1-V4 x 2 maturities)
+  conf <- rbind(do.call(rbind, gtest)[, c("test", "target", "effect_value", "stat", "p")],
+                data.frame(test = P4$vol_compare$test, target = P4$vol_compare$target,
+                           effect_value = 1 - P4$vol_compare$qlike_b / P4$vol_compare$qlike_a,   # relative QLIKE gain
+                           stat = P4$vol_compare$stat, p = P4$vol_compare$p))
+  conf$p_holm <- p.adjust(conf$p, "holm")
+  conf$verdict <- ifelse(conf$p_holm < 0.05, "confirmed", ifelse(conf$p < 0.05, "unadjusted only", "not confirmed"))
+  P4$tests <- conf
+
+  # ---- 4-3: VaR for a rise in KTB yields (upper tail), descriptive ----
+  kupiec <- function(v, p) { n <- length(v); x <- sum(v); pi <- x / n
+    ll0 <- (n - x) * log(1 - p) + x * log(p); ll1 <- if (x == 0) n * log(1) else (n - x) * log(1 - pi) + x * log(pi)
+    lr <- -2 * (ll0 - ll1); c(rate = pi, lr = lr, p = pchisq(lr, 1, lower.tail = FALSE)) }
+  var_tab <- list()
+  for (tg in names(TARGETS)) {
+    f <- vf[[tg]]; D <- prep(tg, conds = character(0))
+    e_all <- D$dy - res$oos[[tg]]$forecasts$M1[match(D$date, res$oos[[tg]]$forecasts$date)]
+    i <- (nrow(D) - nrow(f) + 1):nrow(D); h_rm <- numeric(length(i)); h <- var(D$dy[1:W])   # RiskMetrics, lambda = 0.94
+    for (k in seq_along(i)) { h_rm[k] <- h; h <- 0.94 * h + 0.06 * e_all[i[k]]^2 }
+    for (q in c(0.01, 0.05)) {
+      qs <- function(nu) qt(1 - q, df = nu) * sqrt((nu - 2) / nu)   # quantile of the unit-variance Student t
+      vr <- list(RiskMetrics = f$m1 + sqrt(h_rm) * qnorm(1 - q),
+                 G0 = f$mu0 + sqrt(f$h0) * qs(f$nu0), G1 = f$mu1 + sqrt(f$h1) * qs(f$nu1), G2 = f$mu2 + sqrt(f$h2) * qs(f$nu2))
+      for (mname in names(vr)) { k <- kupiec(f$dy > vr[[mname]], q)
+        var_tab[[length(var_tab) + 1]] <- data.frame(target = tg, level = q, model = mname, n = nrow(f), violations = sum(f$dy > vr[[mname]]),
+                                                     rate = k["rate"], kupiec_lr = k["lr"], kupiec_p = k["p"],
+                                                     mean_var_bp = mean(vr[[mname]]), row.names = NULL) }
+    }
+  }
+  P4$var <- do.call(rbind, var_tab)
+
+  # ---- 4-4: direct multi-horizon regressions (LN2 direct forecasts), descriptive ----
+  lp <- list()
+  for (tg in names(TARGETS)) {
+    D <- prep(tg, conds = character(0)); n <- nrow(D)
+    for (h in 1:10) {
+      D$yh <- sapply(seq_len(n), function(r) if (r + h - 1 <= n) sum(D$dy[r:(r + h - 1)]) else NA)
+      m  <- lm(reformulate(c("s", "dy0", DUMMIES), "yh"), D); cb <- coefs(m, NeweyWest(m, lag = max(L_NW, h), prewhite = FALSE))
+      mm <- lm(reformulate(c("s", "mon", "smon", "dy0", DUMMIES), "yh"), D)
+      Vm <- NeweyWest(mm, lag = max(L_NW, h), prewhite = FALSE); cm <- coefs(mm, Vm)
+      g <- function(cf, tm, col) cf[[col]][cf$term == tm]
+      lp[[length(lp) + 1]] <- data.frame(target = tg, h = h, beta = g(cb, "s", "est"), se = g(cb, "s", "se"),
+        beta_growth = g(cm, "s", "est"), beta_monetary = g(cm, "s", "est") + g(cm, "smon", "est"),
+        se_monetary = sqrt(Vm["s", "s"] + Vm["smon", "smon"] + 2 * Vm["s", "smon"]),
+        diff = g(cm, "smon", "est"), t_diff = g(cm, "smon", "t"), n = nobs(m), row.names = NULL)
+    }
+  }
+  P4$multi_horizon <- do.call(rbind, lp)
+
+  # ---- 4-5: 4-variable VAR, Cholesky (US 2y, US 10y, KTB 3y, KTB 10y), descriptive ----
+  Y <- data.frame(us2 = A$s_us2y, us10 = A$s_us10y, kr3 = A$dy_kr3y, kr10 = A$dy_kr10y)[A$date >= START, ]
+  sel <- vars::VARselect(Y, lag.max = 10, type = "const"); p_var <- unname(sel$selection["SC(n)"])
+  vm <- vars::VAR(Y, p = p_var, type = "const")
+  fe <- vars::fevd(vm, n.ahead = 10)
+  ir <- vars::irf(vm, impulse = c("us2", "us10"), response = c("kr3", "kr10"), n.ahead = 10, ortho = TRUE, boot = TRUE, runs = 200, seed = 2026)
+  irf_tab <- do.call(rbind, lapply(c("us2", "us10"), function(im) do.call(rbind, lapply(c("kr3", "kr10"), function(rs)
+    data.frame(impulse = im, response = rs, h = 0:10, irf = ir$irf[[im]][, rs], lo = ir$Lower[[im]][, rs], hi = ir$Upper[[im]][, rs])))))
+  fevd_tab <- do.call(rbind, lapply(c("kr3", "kr10"), function(rs) data.frame(response = rs, h = 1:10, fe[[rs]], row.names = NULL)))
+  gc_kr <- vars::causality(vm, cause = c("kr3", "kr10"))$Granger; gc_us <- vars::causality(vm, cause = c("us2", "us10"))$Granger
+  granger_var <- data.frame(cause = c("KTB -> US", "US -> KTB"), F = c(gc_kr$statistic, gc_us$statistic),
+                            p = c(gc_kr$p.value, gc_us$p.value), row.names = NULL)
+  starts <- seq(1, nrow(Y) - W + 1, by = STEP_H)
+  roll_fevd <- do.call(rbind, lapply(starts, function(s0) {
+    yw <- Y[s0:(s0 + W - 1), ]; v <- vars::VAR(yw, p = p_var, type = "const"); fw <- vars::fevd(v, n.ahead = 10)
+    data.frame(end_date = A$date[A$date >= START][s0 + W - 1],
+               us_share_kr3 = sum(fw$kr3[10, c("us2", "us10")]), us_share_kr10 = sum(fw$kr10[10, c("us2", "us10")])) }))
+  P4$var_model <- list(lag_bic = p_var, selection = sel$selection, irf = irf_tab, fevd = fevd_tab, granger = granger_var, rolling_fevd = roll_fevd)
+
+  # ---- 4-6: cointegration of yield levels (Korean close t, last US close before t), descriptive ----
+  ui <- findInterval(A$date - 1, us$date); ki <- match(A$date, kr$date)
+  co <- do.call(rbind, lapply(list(c("kr10y", "us10y"), c("kr3y", "us2y")), function(pr) {
+    L <- cbind(kr[[pr[1]]][ki], us[[pr[2]]][ui])[A$date >= START, ]; L <- L[complete.cases(L), ]; colnames(L) <- c("kr", "us")
+    po <- ca.po(L, demean = "constant", type = "Pz"); jo <- ca.jo(L, type = "trace", ecdet = "const", K = 2)
+    js <- setNames(jo@teststat, rownames(jo@cval))                  # teststat is unnamed, same order as cval
+    data.frame(pair = paste(pr, collapse = " ~ "), n = nrow(L), po_stat = po@teststat, po_cv5 = po@cval[1, "5pct"],
+               po_reject = po@teststat > po@cval[1, "5pct"], jo_r0 = js["r = 0  |"], jo_r0_cv5 = jo@cval["r = 0  |", "5pct"],
+               jo_r1 = js["r <= 1 |"], jo_r1_cv5 = jo@cval["r <= 1 |", "5pct"],
+               jo_reject_r0 = js["r = 0  |"] > jo@cval["r = 0  |", "5pct"], row.names = NULL) }))
+  P4$coint <- co
+
+  res$part4 <- P4
+  save_tab(P4$tests, "table9_part4_confirmatory"); save_tab(P4$garchx, "table9b_part4_garchx")
+  save_tab(P4$supp, "table9c_part4_supplementary"); save_tab(P4$diag, "table9d_part4_diagnostics")
+  save_tab(P4$vol_compare, "table9e_part4_vol_forecast"); save_tab(P4$var, "table9f_part4_var")
+  save_tab(P4$multi_horizon, "table9g_part4_multi_horizon"); save_tab(fevd_tab, "table9h_part4_fevd")
+  save_tab(granger_var, "table9i_part4_var_granger"); save_tab(co, "table9j_part4_cointegration")
 }
 
 # ---- Part 3 Holm family (design v6, 3-3): N2, N3, N5, N7 x 2 maturities ----------
