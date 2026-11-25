@@ -2,7 +2,8 @@
 # 04_explainer.R
 # Beginner-friendly explanation of the whole project (Korean), from
 # code/explainer_template.html with numbers filled from output/Team_result.RData.
-# Uses the same result objects as the paper draft (design v6: part 1 specs A-D, part 3 N-tests).
+# Uses the same result objects as the paper draft (design v7: part 1 specs A-D, part 3 N-tests,
+# part 4 volatility spillover with course models).
 # Run from "Final Project":  Rscript code/04_explainer.R
 # Output: output/report/explainer.html and reports/연구_쉬운설명.pdf (headless Chrome).
 # Not part of the submission file.
@@ -56,6 +57,31 @@ n_rows <- paste(sapply(c("N2", "N3", "N5", "N7"), function(n) {
          "</td><td class='n'>", bold(fp(b$p_holm), b$p_holm), "</td><td>", ifelse(b$p_holm < 0.05, "<b>통과</b>", "보정 후 유의하지 않음"), "</td></tr>") }),
   collapse = "\n")
 
+# part 4 (design v7): confirmatory V1-V4, VaR, multi-horizon, VAR, cointegration
+p4 <- res$part4; p4t <- p4$tests
+V_KO <- c(V1 = "V1 분산식에 log VIX (d &gt; 0)", V2 = "V2 VIX 높은 날·낮은 날 c 차이",
+          V3 = "V3 미국 충격으로 변동성 예측 개선", V4 = "V4 VIX를 더해 변동성 예측 개선")
+V_UNIT <- c(V1 = "d", V2 = "c_hi − c_lo", V3 = "QLIKE 개선", V4 = "QLIKE 개선")
+v_rows <- paste(sapply(names(V_KO), function(k) {
+  a <- p4t[startsWith(p4t$test, k) & p4t$target == "k3", ]; b <- p4t[startsWith(p4t$test, k) & p4t$target == "k10", ]
+  ef <- function(r) if (k %in% c("V3", "V4")) pct(r$effect_value, 2) else f(r$effect_value, 2)
+  paste0("<tr><td>", V_KO[k], "</td><td>", V_UNIT[k], "</td><td class='n'>", ef(a), "</td><td class='n'>", fp(a$p),
+         "</td><td class='n'>", ef(b), "</td><td class='n'>", fp(b$p), "</td><td>확인 못 함 (Holm ", fp(max(p4t$p_holm)), ")</td></tr>") }),
+  collapse = "\n")
+vr <- p4$var
+var_rows <- paste(sapply(c("RiskMetrics", "G0", "G1", "G2"), function(m) {
+  g <- function(tg, lv, col) vr[vr$target == tg & vr$level == lv & vr$model == m, col]
+  cell <- function(tg, lv) paste0("<td class='n'>", pct(g(tg, lv, "rate"), 1), " <span class='note'>(p ", fp(g(tg, lv, "kupiec_p")), ")</span></td>")
+  lab <- c(RiskMetrics = "RiskMetrics (λ = 0.94)", G0 = "G0 GARCH(1,1)-t", G1 = "G1 + 미국 충격²", G2 = "G2 + 미국 충격² + log VIX")[m]
+  paste0("<tr><td>", lab, "</td>", cell("k3", 0.01), cell("k3", 0.05), cell("k10", 0.01), cell("k10", 0.05), "</tr>") }),
+  collapse = "\n")
+p4c  <- function(tg) p4$garchx[p4$garchx$target == tg & p4$garchx$model == "GARCH-X: c" & p4$garchx$term == "vxreg1", "est"]
+mh   <- function(tg, h, col) p4$multi_horizon[p4$multi_horizon$target == tg & p4$multi_horizon$h == h, col]
+fv   <- p4$var_model$fevd; fus <- function(r) { x <- fv[fv$response == r & fv$h == 10, ]; x$us2 + x$us10 }
+rf   <- p4$var_model$rolling_fevd; ci <- p4$coint
+sup  <- function(chk, tg) p4$supp[startsWith(p4$supp$check, chk) & p4$supp$target == tg, "p"]
+cot  <- function(pr, col) ci[ci$pair == pr, col]
+
 jwr <- function(tg) { p <- unlist(jw[jw$target == tg, c("p_A", "p_B")]); r <- unique(fp(range(p))); paste(r, collapse = "–") }
 
 v <- list(
@@ -94,7 +120,19 @@ v <- list(
   m4_3 = pct(oo("k3", "M4 vs M1 (N5)")$r2_oos, 1), m4_10 = pct(oo("k10", "M4 vs M1 (N5)")$r2_oos, 1),
   c10p = fp(gc("k10")), c3p = fp(gc("k3")),
   cm10 = f(n3$c_m[n3$target == "k10"]), cg10 = f(n3$c_g[n3$target == "k10"]),
-  heat_vix = pct(hv("k10", "vix")), heat_fut3 = pct(hv("k3", "fut3_cum"))
+  heat_vix = pct(hv("k10", "vix")), heat_fut3 = pct(hv("k3", "fut3_cum")),
+  v_rows = v_rows, var_rows = var_rows, p4_n = format(p4$vol_compare$n[1], big.mark = ","),
+  p4c3 = f(p4c("k3")), p4c10 = f(p4c("k10")),
+  mh1_3 = f(mh("k3", 1, "beta")), mh10_3 = f(mh("k3", 10, "beta")), mh1_10 = f(mh("k10", 1, "beta")), mh10_10 = f(mh("k10", 10, "beta")),
+  mh10_g = f(mh("k10", 10, "beta_growth")), mh10_m = f(mh("k10", 10, "beta_monetary")), mh10_t = f(mh("k10", 10, "t_diff"), 1),
+  var_lag = p4$var_model$lag_bic, fevd3 = pct(fus("kr3")), fevd10 = pct(fus("kr10")),
+  rf_y0 = format(min(rf$end_date), "%Y"), rf_y1 = format(max(rf$end_date), "%Y"),
+  rf3_0 = pct(rf$us_share_kr3[1]), rf10_0 = pct(rf$us_share_kr10[1]),
+  rf3_1 = pct(tail(rf$us_share_kr3, 1)), rf10_1 = pct(tail(rf$us_share_kr10, 1)),
+  po10 = f(cot("kr10y ~ us10y", "po_stat"), 1), po3 = f(cot("kr3y ~ us2y", "po_stat"), 1), po_cv = f(ci$po_cv5[1], 1),
+  jo10 = f(cot("kr10y ~ us10y", "jo_r0"), 1), jo3 = f(cot("kr3y ~ us2y", "jo_r0"), 1), jo_cv = f(ci$jo_r0_cv5[1], 2),
+  sp2_3 = fp(sup("P2 split", "k3")), sp2_10 = fp(sup("P2 split", "k10")),
+  sud_3 = fp(sup("US up vs down", "k3")), sud_10 = fp(sup("US up vs down", "k10"))
 )
 stopifnot(all(lengths(v) == 1), !any(is.na(unlist(v))))
 
