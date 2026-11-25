@@ -2,6 +2,7 @@
 # 04_explainer.R
 # Beginner-friendly explanation of the whole project (Korean), from
 # code/explainer_template.html with numbers filled from output/Team_result.RData.
+# Uses the same result objects as the paper draft (design v6: part 1 specs A-D, part 3 N-tests).
 # Run from "Final Project":  Rscript code/04_explainer.R
 # Output: output/report/explainer.html and reports/연구_쉬운설명.pdf (headless Chrome).
 # Not part of the submission file.
@@ -13,51 +14,87 @@ OUT_PDF  <- "reports/연구_쉬운설명.pdf"
 dir.create(dirname(OUT_HTML), recursive = TRUE, showWarnings = FALSE)
 
 f  <- function(x, d = 2) formatC(x, format = "f", digits = d)
-fp <- function(p) ifelse(p < 0.001, "<0.001", formatC(p, format = "f", digits = 3))
-pct <- function(x) paste0(formatC(100 * x, format = "f", digits = 0), "%")
+fp <- function(p) ifelse(p < 0.0001, "<0.0001", ifelse(p < 0.001, formatC(p, format = "f", digits = 4), formatC(p, format = "f", digits = 3)))
+pct <- function(x, d = 0) paste0(formatC(100 * x, format = "f", digits = d), "%")
 wd <- function(d) paste0(format(d), "(", c("일", "월", "화", "수", "목", "금", "토")[as.POSIXlt(d)$wday + 1], ")")
 
-A <- res$pairs; t2 <- res$table2; t2b <- res$table2b; t3 <- res$table3; t5 <- res$table5
-es <- res$econ_size; q <- res$quintiles; rb <- res$robustness; gx <- res$garchx; hf <- res$heat_freq
-g3 <- function(tg, term, col) t3[t3$target == tg & t3$spec == "trend" & t3$term == term, col]
-sb <- function(tg, col) t2b[t2b$target == tg, col]
-b2 <- function(tg, col) t2[t2$target == tg, col]
-rq <- function(chk, tg, term, col) rb[rb$check == chk & rb$target == tg & rb$term == term, col][1]
-oo <- function(tg, cmp) t5[t5$target == tg & t5$comparison == cmp, ]
-esz <- function(qq) es$beta[es$target == "k10" & es$hyp == "H3" & abs(es$quantile - qq) < 1e-9]
-qb <- function(k) q$beta[q$target == "k10" & q$hyp == "H3" & q$quintile == k]
-hv <- function(tg, v) hf$selected[hf$target == tg & hf$interaction == v]
-gc <- function(tg) gx[gx$target == tg & gx$label == "c (s^2/100)", "lr_p"]
-case <- res$alignment_case
+A <- res$pairs; t2 <- res$paper$table2; t2b <- res$table2b; p1 <- res$paper$table3; jw <- res$paper$table3_joint
+t4 <- res$paper$table4; n3 <- res$paper$table4_n3; t5 <- res$table5; e5 <- res$paper$table5
+p1t <- res$part1$table; q <- res$quintiles; rb <- res$robustness; gx <- res$garchx; hf <- res$heat_freq
+gr <- res$granger; r13 <- res$r13; case <- res$alignment_case
+
+b2  <- function(tg, col) t2[t2$target == tg, col]
+sb  <- function(tg, col) t2b[t2b$target == tg, col]
+rq  <- function(chk, tg, term, col) rb[rb$check == chk & rb$target == tg & rb$term == term, col][1]
+oo  <- function(tg, cmp) t5[t5$target == tg & t5$comparison == cmp, ]
+qb  <- function(k) q$beta[q$target == "k10" & q$hyp == "H3" & q$quintile == k]
+hv  <- function(tg, v) hf$selected[hf$target == tg & hf$interaction == v]
+gc  <- function(tg) gx[gx$target == tg & gx$label == "c (s^2/100)", "lr_p"]
+grr <- function(lag, col) gr[gr$target == "k10" & gr$lags == lag, col]
+p1s <- function(tg, h, sp, col) p1t[p1t$target == tg & p1t$hyp == h & p1t$spec == sp, col]
+e5v <- function(item) e5$k10[e5$item == item]
+r13v <- function(cand, col) r13[r13$target == "k10" & r13$cand == cand & r13$spec == "A", col]
+
+# part 1 table rows (design v6 verdict rule: Holm p < 0.05 in both A and B)
+HYP_KO <- c(H1 = "P1 정책 기대 (s×G)", H2 = "P2 외국인 수급 (s⁺×F)", H3 = "P3 위험회피 (s×V)")
+VERD_KO <- c("significant (opposite sign)" = "<b>유의 (예측과 반대 부호)</b>", "significant (predicted sign)" = "<b>유의 (예측 부호)</b>",
+             "spec-dependent" = "설정 의존", "not rejected" = "기각 못 함")
+bold <- function(x, p) ifelse(p < 0.05, paste0("<b>", x, "</b>"), x)
+p1_rows <- paste(apply(p1, 1, function(r) {
+  pa <- as.numeric(r["holm_A"]); pb <- as.numeric(r["holm_B"])
+  paste0("<tr><td>", ifelse(r["target"] == "k3", "3년물", "10년물"), "</td><td>", HYP_KO[r["hyp"]], "</td>",
+         "<td class='n'>", f(as.numeric(r["est_A"]), 3), "</td><td class='n'>", bold(fp(pa), pa), "</td>",
+         "<td class='n'>", f(as.numeric(r["est_B"]), 3), "</td><td class='n'>", bold(fp(pb), pb), "</td>",
+         "<td>", VERD_KO[r["verdict"]], "</td></tr>") }), collapse = "\n")
+
+# part 3 N-test rows
+N_KO <- c(N2 = "수익률곡선 분류: s×FLAT 계수", N3 = "변동성: c_m − c_g (GARCH-X)", N5 = "표본 밖: M4 vs M1 R²_OOS", N7 = "표본 밖: M4 vs M2 R²_OOS")
+n_rows <- paste(sapply(c("N2", "N3", "N5", "N7"), function(n) {
+  a <- t4[startsWith(t4$test, n) & t4$target == "k3", ]; b <- t4[startsWith(t4$test, n) & t4$target == "k10", ]
+  val <- if (n %in% c("N5", "N7")) pct(b$effect_value, 2) else f(b$effect_value, 3)
+  paste0("<tr><td>", n, "</td><td>", N_KO[n], "</td><td class='n'>", fp(a$p_holm), "</td><td class='n'>", val,
+         "</td><td class='n'>", bold(fp(b$p_holm), b$p_holm), "</td><td>", ifelse(b$p_holm < 0.05, "<b>통과</b>", "보정 후 유의하지 않음"), "</td></tr>") }),
+  collapse = "\n")
+
+jwr <- function(tg) { p <- unlist(jw[jw$target == tg, c("p_A", "p_B")]); r <- unique(fp(range(p))); paste(r, collapse = "–") }
 
 v <- list(
   today = format(Sys.Date()), n_pairs = format(nrow(A), big.mark = ","),
   per_start = format(min(A$date)), per_end = format(max(A$date1)),
-  case_t = wd(case$date), case_t1 = wd(case$date1), case_s = f(case$s_us2y, 0), case_dy = f(case$dy_kr3y, 1),
-  b0_3 = f(b2("k3", "beta0")), b0_10 = f(b2("k10", "beta0")), t0_3 = f(b2("k3", "t_beta0"), 1), t0_10 = f(b2("k10", "t_beta0"), 1),
-  bup_3 = f(b2("k3", "beta_up")), bdn_3 = f(b2("k3", "beta_down")), bup_10 = f(b2("k10", "beta_up")), bdn_10 = f(b2("k10", "beta_down")),
-  brk3 = format(res$supwald$break_date[res$supwald$target == "k3"]), brk10 = format(res$supwald$break_date[res$supwald$target == "k10"]),
-  g_3 = f(sb("k3", "beta_growth")), m_3 = f(sb("k3", "beta_monetary")), td_3 = f(sb("k3", "t_diff"), 1), share_3 = pct(sb("k3", "share_mon")),
-  g_10 = f(sb("k10", "beta_growth")), m_10 = f(sb("k10", "beta_monetary")), td_10 = f(sb("k10", "t_diff"), 1), share_10 = pct(sb("k10", "share_mon")),
-  pct_10 = f(100 * sb("k10", "diff") / sb("k10", "beta_growth"), 0), corr_10 = f(sb("k10", "corr_mon_vix"), 2),
-  h1_3 = f(g3("k3", "s:abs_kr1y_gap", "est"), 3), h1_3_p = fp(g3("k3", "s:abs_kr1y_gap", "p")),
-  h1_10 = f(g3("k10", "s:abs_kr1y_gap", "est"), 3), h1_10_p = fp(g3("k10", "s:abs_kr1y_gap", "p")), h1_10_holm = fp(g3("k10", "s:abs_kr1y_gap", "p_holm")),
-  h2_3 = f(g3("k3", "sp:fut3_cum", "est"), 3), h2_3_p = fp(g3("k3", "sp:fut3_cum", "p")),
-  h2_10 = f(g3("k10", "sp:fut3_cum", "est"), 3), h2_10_p = fp(g3("k10", "sp:fut3_cum", "p")), h2_10_holm = fp(g3("k10", "sp:fut3_cum", "p_holm")),
-  h3_3 = f(g3("k3", "s:vix", "est"), 3), h3_3_p = fp(g3("k3", "s:vix", "p")),
-  h3_10 = f(g3("k10", "s:vix", "est"), 3), h3_10_p = fp(g3("k10", "s:vix", "p")), h3_10_holm = fp(g3("k10", "s:vix", "p_holm")),
-  es_vix20 = f(esz(0.2)), es_vix80 = f(esz(0.8)), q1_vix = f(qb(1)), q5_vix = f(qb(5)),
-  q_vix_p = fp(q$p_q5_q1[q$target == "k10" & q$hyp == "H3"][1]),
-  h2_10A = f(with(res$part1$table, est[target == "k10" & spec == "A" & term == "sp:fut3_cum"]), 3),
-  h3_10A = f(with(res$part1$table, est[target == "k10" & spec == "A" & term == "s:vix"]), 3),
+  case_t = wd(case$date), case_t1 = wd(case$date1), case_n = case$n_us, case_s = f(case$s_us2y, 1), case_dy = f(case$dy_kr3y, 1),
+  b0_3 = f(b2("k3", "beta0"), 3), b0_10 = f(b2("k10", "beta0"), 3), t0_3 = f(b2("k3", "t_beta0"), 1), t0_10 = f(b2("k10", "t_beta0"), 1),
+  bp10_3 = f(b2("k3", "bp_per_10bp"), 1), bp10_10 = f(b2("k10", "bp_per_10bp"), 1),
+  bup_3 = f(b2("k3", "beta_up"), 3), bdn_3 = f(b2("k3", "beta_down"), 3), bup_10 = f(b2("k10", "beta_up"), 3), bdn_10 = f(b2("k10", "beta_down"), 3),
+  pud_3 = f(b2("k3", "p_up_eq_down")), pud_10 = f(b2("k10", "p_up_eq_down")),
+  same_3 = f(b2("k3", "same_day_beta")), same_10 = f(b2("k10", "same_day_beta")),
+  samet_3 = f(b2("k3", "same_day_t"), 1), samet_10 = f(b2("k10", "same_day_t"), 1), sd_10 = f(b2("k10", "sd_dy_bp"), 1),
+  gr10_5 = fp(grr(5, "p")), gr10_10 = fp(grr(10, "p")), gr10_dr2 = f(100 * max(gr$dR2[gr$target == "k10"]), 1),
+  gr10_b0 = f(grr(10, "beta0_with_lags"), 3),
+  brk3 = format(res$supwald$break_date[res$supwald$target == "k3"], "%Y년 %m월"),
+  brk10 = format(res$supwald$break_date[res$supwald$target == "k10"], "%Y년 %m월"),
+  p1_rows = p1_rows, jw3 = jwr("k3"), jw10 = jwr("k10"),
+  q1_vix = f(qb(1)), q5_vix = f(qb(5)), q_vix_p = fp(q$p_q5_q1[q$target == "k10" & q$hyp == "H3"][1]),
+  h2ud_A = fp(res$part1$joint_wald$h2_up_eq_down_p[res$part1$joint_wald$target == "k10" & res$part1$joint_wald$spec == "A"]),
+  h2ud_B = fp(res$part1$joint_wald$h2_up_eq_down_p[res$part1$joint_wald$target == "k10" & res$part1$joint_wald$spec == "B"]),
   r11_h2 = f(rq("R11 within-year (s x year)", "k10", "sp:fut3_cum", "est"), 3), r11_h2_p = fp(rq("R11 within-year (s x year)", "k10", "sp:fut3_cum", "p")),
   r11_vix = f(rq("R11 within-year (s x year)", "k10", "s:vix", "est"), 3), r11_vix_p = fp(rq("R11 within-year (s x year)", "k10", "s:vix", "p")),
-  r4_h1 = f(rq("R4 2010-2019", "k10", "s:abs_kr1y_gap", "est"), 3), r4_vix = f(rq("R4 2020-2026", "k10", "s:vix", "est"), 3),
-  heat_vix = pct(hv("k10", "vix")), heat_fut3 = pct(hv("k3", "fut3_cum")),
-  oos_m1_3 = f(oo("k3", "M1 vs M0")$r2_oos), oos_m1_10 = f(oo("k10", "M1 vs M0")$r2_oos),
-  oos_m2_3 = f(oo("k3", "M2 vs M1")$r2_oos, 3), oos_m2_10 = f(oo("k10", "M2 vs M1")$r2_oos, 3), cw_10 = fp(oo("k10", "M2 vs M1")$cw_p),
-  oos_m3_3 = f(oo("k3", "M3 vs M1")$r2_oos, 3), oos_m3_10 = f(oo("k10", "M3 vs M1")$r2_oos, 3),
-  c10p = fp(gc("k10")), c3p = fp(gc("k3"))
+  r4_vix_e = f(rq("R4 2010-2019", "k10", "s:vix", "est"), 3), r4_vix_e_p = fp(rq("R4 2010-2019", "k10", "s:vix", "p")),
+  r4_vix_l = f(rq("R4 2020-2026", "k10", "s:vix", "est"), 3), r4_vix_l_p = fp(rq("R4 2020-2026", "k10", "s:vix", "p")),
+  vix_C = f(p1s("k10", "H3", "C", "est"), 3), vix_C_holm = fp(p1s("k10", "H3", "C", "p_holm")),
+  baa_vix = f(r13v("baa_spread", "vix_est"), 3), baa_vix_p = fp(r13v("baa_spread", "vix_p")), baa_cor = f(r13v("baa_spread", "cor_vix")),
+  krw_est = paste0("+", f(r13v("krw_chg20", "est"), 3)), krw_p = fp(r13v("krw_chg20", "p")), krw_holm = fp(r13v("krw_chg20", "p_holm")),
+  g_3 = f(sb("k3", "beta_growth"), 3), m_3 = f(sb("k3", "beta_monetary"), 3), td_3 = f(sb("k3", "t_diff"), 1), share_3 = pct(sb("k3", "share_mon")),
+  g_10 = f(sb("k10", "beta_growth"), 3), m_10 = f(sb("k10", "beta_monetary"), 3), td_10 = f(sb("k10", "t_diff"), 1), share_10 = pct(sb("k10", "share_mon")),
+  n_rows = n_rows,
+  e_g10 = f(e5v("growth-type day (mon = 0)"), 1), e_m10 = f(e5v("monetary-type day (mon = 1)"), 1),
+  e_fut = f(e5v("change per +1 s.d. of H2 (spec A)"), 2), e_vix = f(e5v("change per +1 s.d. of H3 (spec A)"), 2),
+  n_fc = format(oo("k10", "M2 vs M1")$n, big.mark = ","),
+  m1_3 = pct(oo("k3", "M1 vs M0")$r2_oos, 1), m1_10 = pct(oo("k10", "M1 vs M0")$r2_oos, 1),
+  m2_3 = pct(oo("k3", "M2 vs M1")$r2_oos, 1), m2_10 = pct(oo("k10", "M2 vs M1")$r2_oos, 1), cw2_10 = fp(oo("k10", "M2 vs M1")$cw_p),
+  m4_3 = pct(oo("k3", "M4 vs M1 (N5)")$r2_oos, 1), m4_10 = pct(oo("k10", "M4 vs M1 (N5)")$r2_oos, 1),
+  c10p = fp(gc("k10")), c3p = fp(gc("k3")),
+  cm10 = f(n3$c_m[n3$target == "k10"]), cg10 = f(n3$c_g[n3$target == "k10"]),
+  heat_vix = pct(hv("k10", "vix")), heat_fut3 = pct(hv("k3", "fut3_cum"))
 )
 stopifnot(all(lengths(v) == 1), !any(is.na(unlist(v))))
 
