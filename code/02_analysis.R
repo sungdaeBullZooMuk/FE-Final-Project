@@ -33,6 +33,12 @@
 #     compared by QLIKE/DMW (V3, V4); Holm over the 8 tests. VaR, direct multi-horizon
 #     regressions, a 4-variable VAR and cointegration tests are descriptive.
 #     The rolling GARCH forecasts (ugarchroll) take several minutes; a 'parallel' cluster is used.
+#   - Design v8 (docs/미국몫_분해설계.md, committed before running): part 5 = why the US share
+#     of KTB yield variance rose. Variance ratio from the baseline regression, 2010-2019 vs
+#     2020-2026, exact logit decomposition into US shock size, pass-through and Korea-specific
+#     variance (4-10); moving block bootstrap (20 days, 1,999 draws), L2-L5 x 2 maturities, Holm
+#     over 8. VAR FEVD by period, GARCH conditional variance ratio and a sup-Wald break in s^2
+#     are descriptive. P5_B sets the number of bootstrap draws (default 1999).
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -956,6 +962,128 @@ if (STAGE >= 3) {
   save_tab(P4$vol_compare, "table9e_part4_vol_forecast"); save_tab(P4$var, "table9f_part4_var")
   save_tab(P4$multi_horizon, "table9g_part4_multi_horizon"); save_tab(fevd_tab, "table9h_part4_fevd")
   save_tab(granger_var, "table9i_part4_var_granger"); save_tab(co, "table9j_part4_cointegration")
+}
+
+# ---- 4-10. Part 5 (design v8, docs/미국몫_분해설계.md): decomposing the rising US share ----
+# Variance ratio VR = b^2 var(s) / (b^2 var(s) + var(e)) from the baseline regression, early
+# (2010-2019) vs late (2020-2026) sample. logit VR difference = 2 dlog|b| + dlog var(s) - dlog var(e),
+# exactly. Moving block bootstrap within each period; L2-L5 x 2 maturities, Holm over 8.
+if (STAGE >= 3) {
+  message("4-10 part 5: US share decomposition, block bootstrap, VAR by period, conditional VR")
+  P5 <- list()
+  SPLIT <- as.Date("2020-01-01")
+  B5 <- as.integer(Sys.getenv("P5_B", "1999"))
+  XCOLS <- c("s", "dy0", DUMMIES)
+  vr_stats <- function(X, y) {
+    f <- lm.fit(X, y); b <- f$coefficients[["s"]]
+    vs <- var(X[, "s"]); ve <- var(f$residuals)
+    c(beta = b, var_s = vs, var_e = ve, vr = b^2 * vs / (b^2 * vs + ve))
+  }
+  dec <- function(e, l) {          # e, l: vr_stats of the early and late period
+    lg <- function(v) log(v / (1 - v))
+    c(vr_early = e[["vr"]], vr_late = l[["vr"]], d_vr = l[["vr"]] - e[["vr"]],
+      d_logit = lg(l[["vr"]]) - lg(e[["vr"]]),
+      C_s = log(l[["var_s"]] / e[["var_s"]]), C_beta = 2 * log(abs(l[["beta"]]) / abs(e[["beta"]])),
+      C_e = -log(l[["var_e"]] / e[["var_e"]]))
+  }
+  mbb <- function(n, L) { k <- ceiling(n / L); st <- sample.int(n - L + 1, k, replace = TRUE)
+    as.vector(outer(0:(L - 1), st, "+"))[seq_len(n)] }
+  boot_dec <- function(XE, yE, XL, yL, L, B) {
+    t(replicate(B, { ie <- mbb(nrow(XE), L); il <- mbb(nrow(XL), L)
+      dec(vr_stats(XE[ie, , drop = FALSE], yE[ie]), vr_stats(XL[il, , drop = FALSE], yL[il])) }))
+  }
+  p_one <- function(th, bt) (1 + sum(bt - th >= th)) / (length(bt) + 1)           # H1: theta > 0
+  p_two <- function(th, bt) (1 + sum(abs(bt - th) >= abs(th))) / (length(bt) + 1)
+  mk <- function(D) { X <- cbind("(Intercept)" = 1, as.matrix(D[, XCOLS])); list(X = X, y = D$dy) }
+
+  dec_tab <- list(); stats_tab <- list(); tests <- list(); rob <- list(); boots <- list()
+  for (tg in names(TARGETS)) {
+    D <- prep(tg, conds = character(0))
+    E <- mk(D[D$date < SPLIT, ]); Lt <- mk(D[D$date >= SPLIT, ])
+    se <- vr_stats(E$X, E$y); sl <- vr_stats(Lt$X, Lt$y); d0 <- dec(se, sl)
+    stats_tab[[tg]] <- data.frame(target = tg, period = c("2010-2019", "2020-2026"), n = c(nrow(E$X), nrow(Lt$X)),
+                                  rbind(se, sl), row.names = NULL)
+    set.seed(2026); bt <- boot_dec(E$X, E$y, Lt$X, Lt$y, 20, B5); boots[[tg]] <- bt
+    ci <- function(v) quantile(v, c(0.025, 0.975), names = FALSE)
+    th5 <- d0[["C_s"]] - d0[["C_beta"]]; bt5 <- bt[, "C_s"] - bt[, "C_beta"]
+    tests[[tg]] <- data.frame(
+      test = c("L1 VR late > early (confirmation)", "L2 C_s > 0 (bigger US shocks)", "L3 C_beta != 0 (pass-through)",
+               "L4 C_e != 0 (Korea-specific variance)", "L5 C_s > C_beta (shock size dominates)"),
+      target = tg,
+      estimate = c(d0[["d_vr"]], d0[["C_s"]], d0[["C_beta"]], d0[["C_e"]], th5),
+      lo = c(ci(bt[, "d_vr"])[1], ci(bt[, "C_s"])[1], ci(bt[, "C_beta"])[1], ci(bt[, "C_e"])[1], ci(bt5)[1]),
+      hi = c(ci(bt[, "d_vr"])[2], ci(bt[, "C_s"])[2], ci(bt[, "C_beta"])[2], ci(bt[, "C_e"])[2], ci(bt5)[2]),
+      p = c(p_one(d0[["d_vr"]], bt[, "d_vr"]), p_one(d0[["C_s"]], bt[, "C_s"]), p_two(d0[["C_beta"]], bt[, "C_beta"]),
+            p_two(d0[["C_e"]], bt[, "C_e"]), p_one(th5, bt5)), row.names = NULL)
+    dec_tab[[tg]] <- data.frame(target = tg, t(d0), row.names = NULL)
+    # robustness (reported only): block length 10 and 60; late period without 2020
+    for (Lb in c(10, 60)) { set.seed(2026); bb <- boot_dec(E$X, E$y, Lt$X, Lt$y, Lb, B5)
+      rob[[paste(tg, Lb)]] <- data.frame(target = tg, check = paste0("block ", Lb), t(d0),
+        p_L2 = p_one(d0[["C_s"]], bb[, "C_s"]), p_L3 = p_two(d0[["C_beta"]], bb[, "C_beta"]),
+        p_L4 = p_two(d0[["C_e"]], bb[, "C_e"]), p_L5 = p_one(th5, bb[, "C_s"] - bb[, "C_beta"]), row.names = NULL) }
+    L2 <- mk(D[D$date >= SPLIT & format(D$date, "%Y") != "2020", ])
+    d2 <- dec(se, vr_stats(L2$X, L2$y)); set.seed(2026); bb <- boot_dec(E$X, E$y, L2$X, L2$y, 20, B5)
+    rob[[paste(tg, "no2020")]] <- data.frame(target = tg, check = "late period without 2020", t(d2),
+      p_L2 = p_one(d2[["C_s"]], bb[, "C_s"]), p_L3 = p_two(d2[["C_beta"]], bb[, "C_beta"]),
+      p_L4 = p_two(d2[["C_e"]], bb[, "C_e"]), p_L5 = p_one(d2[["C_s"]] - d2[["C_beta"]], bb[, "C_s"] - bb[, "C_beta"]), row.names = NULL)
+  }
+  tst <- do.call(rbind, tests)
+  fam <- !startsWith(tst$test, "L1")
+  tst$p_holm <- NA; tst$p_holm[fam] <- p.adjust(tst$p[fam], "holm")
+  tst$verdict <- ifelse(!fam, ifelse(tst$p < 0.05, "confirmed (direction seen before)", "not confirmed"),
+                        ifelse(tst$p_holm < 0.05, "confirmed", ifelse(tst$p < 0.05, "significant before correction", "not confirmed")))
+  P5$period_stats <- do.call(rbind, stats_tab); P5$decomposition <- do.call(rbind, dec_tab)
+  P5$tests <- tst; P5$robustness <- do.call(rbind, rob)
+
+  # ---- VAR (part 4 specification) by period: 10-day FEVD US share, block bootstrap (reported only) ----
+  Y <- data.frame(us2 = A$s_us2y, us10 = A$s_us10y, kr3 = A$dy_kr3y, kr10 = A$dy_kr10y)
+  pv <- res$part4$var_model$lag_bic
+  fev_share <- function(Yp) { f <- vars::fevd(vars::VAR(Yp, p = pv, type = "const"), n.ahead = 10)
+    c(kr3 = sum(f$kr3[10, c("us2", "us10")]), kr10 = sum(f$kr10[10, c("us2", "us10")])) }
+  YE <- Y[A$date < SPLIT, ]; YL <- Y[A$date >= SPLIT, ]
+  fE <- fev_share(YE); fL <- fev_share(YL)
+  set.seed(2026)
+  fb <- t(replicate(B5, fev_share(YL[mbb(nrow(YL), 20), ]) - fev_share(YE[mbb(nrow(YE), 20), ])))
+  P5$var_fevd <- data.frame(response = c("kr3", "kr10"), share_early = fE, share_late = fL, diff = fL - fE,
+                            lo = apply(fb, 2, quantile, 0.025), hi = apply(fb, 2, quantile, 0.975),
+                            p_one = sapply(1:2, function(j) p_one((fL - fE)[j], fb[, j])), row.names = NULL)
+
+  # ---- conditional variance ratio with GARCH (LN4), descriptive ----
+  g11 <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                    mean.model = list(armaOrder = c(0, 0), include.mean = TRUE), distribution.model = "std")
+  cvr <- list(); cyear <- list()
+  for (tg in names(TARGETS)) {
+    D <- prep(tg, conds = character(0)); D$yr <- factor(format(D$date, "%Y"))
+    fs <- ugarchfit(g11, D$s, solver = "hybrid"); hs <- as.numeric(sigma(fs))^2
+    m <- lm(dy ~ s:yr + yr + dy0 + hol + nous + fomc_d + mpc_d, D)
+    by <- coef(m)[paste0("s:yr", levels(D$yr))]; b_t <- by[as.integer(D$yr)]
+    fe <- ugarchfit(g11, residuals(m), solver = "hybrid"); he <- as.numeric(sigma(fe))^2
+    if (fs@fit$convergence != 0 || fe@fit$convergence != 0) stop("GARCH for the conditional VR did not converge")
+    vr_t <- b_t^2 * hs / (b_t^2 * hs + he)
+    cvr[[tg]] <- data.frame(target = tg, date = D$date, vr = vr_t, h_s = hs, h_e = he, beta_year = b_t, row.names = NULL)
+    yy <- levels(D$yr); mhs <- tapply(hs, D$yr, mean); mhe <- tapply(he, D$yr, mean)
+    vry <- by^2 * mhs / (by^2 * mhs + mhe)
+    cyear[[tg]] <- data.frame(target = tg, year = as.integer(yy), beta = by, mean_h_s = mhs, mean_h_e = mhe, vr = vry,
+                              c_s = log(mhs / mean(mhs)), c_beta = 2 * log(abs(by) / exp(mean(log(abs(by))))),
+                              c_e = -log(mhe / mean(mhe)), row.names = NULL)
+  }
+  P5$cond_vr <- do.call(rbind, cvr); P5$cond_vr_year <- do.call(rbind, cyear)
+
+  # ---- break in the size of US shocks (LN1), descriptive: sup-Wald on the mean of s^2, HAC ----
+  # (s = 0 on some days, so the test is on s^2 itself rather than log s^2)
+  P5$supwald_s2 <- do.call(rbind, lapply(names(TARGETS), function(tg) {
+    D <- prep(tg, conds = character(0)); D$s2 <- D$s^2; Tn <- nrow(D)
+    grid <- seq(floor(0.15 * Tn), ceiling(0.85 * Tn), by = 5)
+    Wt <- sapply(grid, function(b) { D$post <- 1 * (seq_len(Tn) > b); m <- lm(s2 ~ post, D); V <- V_nw(m)
+      coef(m)["post"]^2 / V["post", "post"] })
+    j <- which.max(Wt); lam <- (0.85 * 0.85) / (0.15 * 0.15)
+    data.frame(target = tg, shock = TARGETS[[tg]]["s"], supW = Wt[j], break_date = D$date[grid[j]],
+               p = strucchange:::pvalue.Fstats(Wt[j], type = "supF", k = 1, lambda = lam), row.names = NULL) }))
+
+  res$part5 <- P5
+  save_tab(P5$tests, "table10_part5_confirmatory"); save_tab(P5$period_stats, "table10b_part5_period_stats")
+  save_tab(P5$robustness, "table10c_part5_robustness"); save_tab(P5$var_fevd, "table10d_part5_var_fevd")
+  save_tab(P5$cond_vr_year, "table10e_part5_conditional_vr_year"); save_tab(P5$supwald_s2, "table10f_part5_supwald_s2")
 }
 
 # ---- Part 3 Holm family (design v6, 3-3): N2, N3, N5, N7 x 2 maturities ----------

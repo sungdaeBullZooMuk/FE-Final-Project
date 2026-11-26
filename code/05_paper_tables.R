@@ -1,6 +1,6 @@
 # =============================================================================
 # 05_paper_tables.R
-# Renders the paper's main-text tables 1-6 and figure 2 (Korean captions) from
+# Renders the paper's main-text tables 1-8, figures 1-3 and appendix tables (Korean captions) from
 # res$paper in output/Team_result.RData, as a preview for writing the paper.
 # Layout follows docs/조건별전이_보고서_구성안.md (11pt, line spacing 1.3).
 # Run from "Final Project":  Rscript code/05_paper_tables.R
@@ -58,9 +58,9 @@ body2 <- sapply(seq_len(nrow(t2)), function(i) with(t2[i, ], tr(c(tg_short_ko[ta
   f(beta_up), f(beta_down), fp(p_up_eq_down), f(bp_per_10bp, 1), f(sd_dy_bp, 1),
   paste0(f(same_day_beta), " (", f(same_day_t, 1), ")")))))
 T2 <- tbl(c(th_span(c("", "기준 모형 (1)", "상승·하락 분리", "경제적 크기", "같은 날"), c(1, 4, 3, 2, 1)),
-            tr(c("목표", "β₀ (t)", "ρ (t)", "R²", "N", "β⁺", "β⁻", "같음 p", "10bp → bp", "Δy s.d.", "Δy(t) 계수 (t)"), "th")),
+            tr(c("목표", "β (t)", "ρ (t)", "R²", "N", "β⁺", "β⁻", "같음 p", "10bp → bp", "Δy s.d.", "Δy(t) 계수 (t)"), "th")),
   body2, "표 2. 기준 전이: 미국 금리 충격의 다음 날 국고채 전이",
-  paste0("식 (1): Δy(t+1) = α + β₀ s(t) + ρ Δy(t) + δ′D(t) + ε. 3년물은 미 2년, 10년물은 미 10년 충격. D는 휴장·FOMC·금통위 더미. 괄호 안은 Newey–West(시차 9) t값. β⁺·β⁻는 상승·하락 충격의 계수, Δy s.d.는 국고채 일별 변화의 표준편차(bp). ",
+  paste0("식 (1): Δy(t+1) = α + β s(t) + ρ Δy(t) + δ′D(t) + ε. 3년물은 미 2년, 10년물은 미 10년 충격. D는 휴장·FOMC·금통위 더미. 괄호 안은 Newey–West(시차 9) t값. β⁺·β⁻는 상승·하락 충격의 계수, Δy s.d.는 국고채 일별 변화의 표준편차(bp). ",
          "'같음 p'는 β⁺ = β⁻의 HAC Wald 검정. ",
          "'같은 날'은 한국 t일 변화 Δy(t)를 s(t)에 회귀한 계수다. 미국 금리는 뉴욕 오후 3시 30분 무렵 값이라 s(t)의 일부는 한국 t일 장중에 일어난다(3.2절).",
          src("paper_table2.csv")))
@@ -78,8 +78,8 @@ body3 <- unlist(lapply(names(tg_ko), function(tg) {
 }))
 T3 <- tbl(c(th_span(c("", "설정 A: trend 있음", "설정 B: trend 없음", ""), c(1, 3, 3, 1)),
             tr(c("가설 (예측 부호 +)", "계수", "p", "Holm p", "계수", "p", "Holm p", "판정"), "th")),
-  body3, "표 3. 사전 가설 (1부): 시장 조건에 따른 전이 차이",
-  paste0("식 (2)의 상호작용 계수. 조건은 표준화했으므로 계수는 조건 1 표준편차당 전이 계수의 변화다. P2는 s를 상승(s⁺)·하락(s⁻)으로 나눈 식에서 s⁺ 항이다. ",
+  body3, "표 4. 사전 가설: 시장 조건에 따른 전이 차이",
+  paste0("식 (4)의 상호작용 계수. 조건은 표준화했으므로 계수는 조건 1 표준편차당 전이 계수의 변화다. P2는 s를 상승(s⁺)·하락(s⁻)으로 나눈 식에서 s⁺ 항이다. ",
          "양측 검정, Newey–West(시차 9). Holm은 설정마다 6개 검정(가설 3 × 만기 2)에 적용한다. 굵게 = Holm p < 0.05. ",
          "판정 규칙: A·B 모두 통과하면 '유의', 하나만 통과하면 '설정 의존'. ",
          "결합 Wald 행의 계수 칸은 χ² 통계량이고, Holm은 만기 2개에 적용한다.", src("paper_table3.csv", "paper_table3_joint.csv")))
@@ -101,7 +101,7 @@ n3txt <- if (!is.null(n3)) paste0("N3의 성격별 c: 10년물 c_m ", f(n3$c_m[n
   ", c_g ", f(n3$c_g[n3$target == "k3"], 2), ". ") else ""
 T4 <- tbl(c(th_span(c("", "", "3년물", "10년물"), c(1, 1, 4, 4)),
             tr(c("검정 (미리 정한 예측)", "효과 지표", "효과", "통계량", "p", "Holm p", "효과", "통계량", "p", "Holm p"), "th")),
-  body4, "표 4. 충격 성격 (3부): 미리 고정한 검정 8개",
+  body4, "표 5. 충격 성격: 미리 고정한 검정 8개",
   paste0("mon = 1은 미국 금리 변화와 같은 날 NASDAQ 수익률의 부호가 반대인 날(통화정책형, Hoek, Kamin & Yoldas 2022의 일별 근사), ",
          "FLAT = 1은 |Δ미 2년| > |Δ미 10년|인 날이다. N3는 GARCH(1,1)-X 분산식에 s²·mon과 s²·(1 − mon)을 넣은 모형(Student-t). ",
          "N5·N7의 R²_OOS = 1 − MSFE(M4)/MSFE(비교 모형), 1,000일 롤링. M1 = 기준, M2 = M1 + 조건 3개, M4 = M1 + mon. ",
@@ -121,9 +121,9 @@ item_ko <- c("baseline: 10 bp US shock" = "기준 전이 (미 10bp 충격)",
 ord5 <- c(1, 5, 6, 2, 4, 3, 7)
 body5 <- sapply(ord5, function(i) with(t5[i, ], tr(c(item_ko[item], f(k3, 2), f(k10, 2)), cls = if (i == 7) "ref" else NULL)))
 T5 <- tbl(tr(c("미국 금리 10bp 충격일 때 다음 날 국고채 변화 (bp)", "3년물", "10년물"), "th"), body5,
-  "표 5. 경제적 크기",
-  paste0("기준 전이 = 10 × β₀(표 2). 성장형·통화정책형 = 10 × 각 날의 전이 계수(s × mon을 넣은 식 N1. 효과를 본 뒤 정한 식이라 확증 검정에는 쓰지 않는다). ",
-         "조건 행 = 10 × 상호작용 계수(설정 A, 표 3). 조건 효과와 성격 효과의 크기 비교는 검정이 아니다(직접 비교 N7은 표 4).",
+  "표 6. 경제적 크기",
+  paste0("기준 전이 = 10 × β(표 2). 성장형·통화정책형 = 10 × 각 날의 전이 계수(s × mon을 넣은 식 N1. 효과를 본 뒤 정한 식이라 확증 검정에는 쓰지 않는다). ",
+         "조건 행 = 10 × 상호작용 계수(설정 A, 표 4). 조건 효과와 성격 효과의 크기 비교는 검정이 아니다(직접 비교 N7은 표 5).",
          src("paper_table5.csv")))
 
 # ---- 표 6 --------------------------------------------------------------------------
@@ -145,7 +145,7 @@ body6 <- sapply(seq_len(nrow(t6)), function(i) with(t6[i, ], tr(c(chk_ko(check),
   cls = if (i == 1) "main" else NULL)))
 T6 <- tbl(c(th_span(c("", "P3: s × log VIX", "P2: s⁺ × fut3", "참고: s × fut3 (대칭)"), c(1, 2, 2, 2)),
             tr(c("설정 (10년물)", "계수", "p (Holm)", "계수", "p (Holm)", "계수", "p"), "th")),
-  body6, "표 6. 견고성: 10년물 두 결과",
+  body6, "표 8. 견고성: 10년물의 두 조건 효과",
   paste0("괄호 안 Holm p는 해당 설정의 1부 6개 검정 묶음 기준이며, 1부 설정과 R12에만 있다. R1–R9는 fut3를 대칭(s × fut3)으로 넣은 식이라 s⁺ 항이 없다. ",
          "R1의 미 2년 충격은 10년물에 짧은 만기 충격을 넣은 것이다. 3년물은 Holm을 적용한 설정(1부, R12)에서 통과하는 조건 효과가 없다. 보정 없는 견고성 식에서는 2010–2019년의 s × fut3(−0.091, p < 0.001)이 유일하게 강하다.",
          src("paper_table6.csv")))
@@ -244,7 +244,7 @@ FIG2_SVG <- "output/figures/paper_figure2_rolling.svg"
 writeLines(svg2, FIG2_SVG, useBytes = TRUE)
 F2 <- paste0("<figure class='fig'><figcaption>그림 2. 250일 롤링 전이 계수</figcaption>",
              "<img src='../figures/paper_figure2_rolling.svg'><p class='note'>",
-             "각 날짜의 값은 그날까지 250거래일 창에서 Δy(t+1)를 s(t)에 단순 회귀한 계수다. 점선은 식 (1)의 전체 표본 β₀(3년물 0.29, 10년물 0.30)다.",
+             "각 날짜의 값은 그날까지 250거래일 창에서 Δy(t+1)를 s(t)에 단순 회귀한 계수다. 점선은 식 (1)의 전체 표본 β(3년물 0.29, 10년물 0.30)다.",
              src("res$rolling_beta (figure5_rolling_beta.png와 같은 계열)"), "</p></figure>")
 
 # ---- 부록 표 A1-A5 ------------------------------------------------------------------
@@ -278,7 +278,7 @@ TA3 <- tbl(c(th_span(c("", "ACM 분해", "KW 분해"), c(1, 2, 2)), tr(c("항 (1
                                             f(r2g("kw", terms_a3[i], "est")), fp(r2g("kw", terms_a3[i], "p"))))),
   "표 A2. 미국 10년물 충격의 기대·기간 프리미엄 분해 (사후 점검, 5.3절)",
   paste0("s_tp = 미국 10년물 기간 프리미엄 변화(ACM: Adrian, Crump and Moench 2013; KW: Kim and Wright 2005), s_exp = s − s_tp. ",
-         "식 (2)에서 s를 두 부분으로 나눈 것(추세·mon 없음). 보정 없이 보고한다.", src("table6_robustness.csv (R2 행)")))
+         "식 (4)에서 s를 두 부분으로 나눈 것(추세·mon 없음). 보정 없이 보고한다.", src("table6_robustness.csv (R2 행)")))
 # A4 out-of-sample, all comparisons
 t5o <- res$table5
 cmp_ko <- c("M1 vs M0" = "M1 vs M0 (상수 예측)", "M2 vs M1" = "M2 vs M1", "M4 vs M1 (N5)" = "M4 vs M1 (N5)",
@@ -303,13 +303,13 @@ TA5 <- tbl(tr(c("검정", "p", "14개 Holm p"), "th"),
 
 # A6 exogeneity (Granger) check
 gr <- res$granger
-TA6 <- tbl(c(th_span(c("", "", "미국 식: s(t) ← 국고채 시차", "식 (1)의 β₀"), c(1, 2, 4, 2)),
+TA6 <- tbl(c(th_span(c("", "", "미국 식: s(t) ← 국고채 시차", "식 (1)의 β"), c(1, 2, 4, 2)),
              tr(c("목표", "시차 p", "N", "국고채 시차 계수 합", "Wald χ²(p)", "p", "ΔR² (%p)", "기준", "+ 국고채 시차"), "th")),
   sapply(seq_len(nrow(gr)), function(i) with(gr[i, ], tr(c(tg_ko[target], lags, format(n, big.mark = ","), f(sum_kr), f(W, 2),
     bold_if(fp(p), p < 0.05), f(100 * dR2, 2), f(beta0_base), f(beta0_with_lags))))),
   "표 A3. 미국 충격의 외생성 점검 (Granger 검정, 3.2절)",
   paste0("s(t)를 자기 시차 p개와 국고채 변화 Δy(t−1), …, Δy(t−p)에 회귀하고 국고채 시차 계수가 모두 0인지 HAC Wald로 검정한다. ",
-         "Δy(t)는 s(t)와 시간이 겹쳐 넣지 않는다. ΔR²는 국고채 시차를 더했을 때 늘어난 R². 오른쪽 두 열은 같은 시차를 식 (1)에 넣기 전과 후의 β₀. 굵게 = p < 0.05.",
+         "Δy(t)는 s(t)와 시간이 겹쳐 넣지 않는다. ΔR²는 국고채 시차를 더했을 때 늘어난 R². 오른쪽 두 열은 같은 시차를 식 (1)에 넣기 전과 후의 β. 굵게 = p < 0.05.",
          src("granger_exogeneity.csv")))
 
 # ---- 4부 (design v7): 표 7 GARCH-X·변동성 예측, 표 8 VaR, 그림 3 여러 날 전이·분산분해, 부록 표 A7 ----
@@ -332,7 +332,7 @@ T7 <- tbl(c(th_span(c("", "3년물", "10년물"), c(1, 4, 4)),
     test_row("V3", "V3 G1 vs G0: 미국 충격 (QLIKE, DMW)", pctf),
     test_row("V4", "V4 G2 vs G1: + log VIX (QLIKE, DMW)", pctf),
     tr(c("<b>(b) GARCH-X 추정 (Student t)</b>", rep("", 8)), cls = "sec")),
-  "표 7. 변동성 전이 (4부): GARCH-X와 변동성 예측",
+  "표 7. 변동성 전이: GARCH-X와 변동성 예측 (설계 v7)",
   paste0("분산식 h(t+1) = ω + α ε(t)² + β h(t) + c·s(t)²/100 + d·log VIX(t). V1은 d = 0을 c만 있는 GARCH-X와 비교하는 우도비 검정이며 d ≥ 0 제약 때문에 χ̄²(50:50)를 쓴다. ",
          "V2는 c를 VIX가 중앙값보다 높은 날(c_hi)과 낮은 날(c_lo)로 나눈다(평균식에 HV, s × HV 포함). 효과 = c_hi − c_lo. ",
          "V3·V4는 1,000일 롤링 창(20일마다 재추정)의 1일 앞 분산 예측 3,140개를 M1 예측오차 제곱(하한 0.01)에 대해 QLIKE로 비교한 DMW 단측 검정이다. 효과 = 상대 QLIKE 개선(양수 = 큰 모형이 나음). ",
@@ -423,6 +423,71 @@ TA7 <- tbl(c(th_span(c("", "3년물", "10년물"), c(1, 3, 3)), tr(c("보조 점
          "공적분 짝은 국고 3년–미 2년, 국고 10년–미 10년 수준(한국 t일 종가, 그 전 마지막 미국 종가). ",
          "VAR Granger의 국고채 → 미국 방향은 한 행의 국고채 시차 Δy(t)가 s(t)의 앞부분과 시간이 겹치는 기계적 관계를 포함한다(3.2절, 표 A3은 이를 빼고 검정)."))
 
+# ---- 설계 v8: 표 3 미국 몫과 분해, 그림 3 롤링 분산분해와 연도별 분해 ------------------------------
+P5 <- res$part5
+stopifnot(!is.null(P5))
+ps <- P5$period_stats; t5x <- P5$tests; vf <- P5$var_fevd
+per_row <- function(tg, k) { r <- ps[ps$target == tg, ][k, ]; v <- vf[vf$response == sub("k", "kr", tg), ]
+  tr(c(if (k == 1) tg_short_ko[tg] else "", c("2010–19", "2020–26")[k], format(r$n, big.mark = ","), f(r$beta, 3), f(sqrt(r$var_s), 2), f(sqrt(r$var_e), 2),
+       paste0(f(100 * r$vr, 1), "%"), f(log(r$vr / (1 - r$vr)), 2), paste0(f(100 * c(v$share_early, v$share_late)[k], 1), "%"))) }
+fpb <- function(p) ifelse(is.na(p), "–", ifelse(p < 0.001, formatC(p, format = "f", digits = 4), formatC(p, format = "f", digits = 3)))
+ci_txt <- function(lo, hi, pct = FALSE) if (pct) paste0("[", f(100 * lo, 1), ", ", f(100 * hi, 1), "]") else paste0("[", f(lo, 2), ", ", f(hi, 2), "]")
+l_row <- function(code, lab) { cells <- lab
+  for (tg in c("k3", "k10")) { r <- t5x[startsWith(t5x$test, code) & t5x$target == tg, ]; pc <- code == "L1"
+    cells <- c(cells, if (pc) paste0("+", f(100 * r$estimate, 1), "%p") else f(r$estimate, 2), ci_txt(r$lo, r$hi, pc),
+               fpb(r$p), if (is.na(r$p_holm)) "–" else bold_if(fpb(r$p_holm), r$p_holm < 0.05)) }
+  tr(cells) }
+TD <- tbl(c(tr(c("(a) 기간별 추정", "기간", "N", "β", "σ_s (bp)", "σ_e (bp)", "분산 비율", "로짓", "VAR 미국 몫"), "th")),
+  c(per_row("k3", 1), per_row("k3", 2), per_row("k10", 1), per_row("k10", 2),
+    tr(c("<b>(b) 분해와 검정</b>", "3년물: 값", "95% 구간", "p", "Holm p", "10년물: 값", "95% 구간", "p", "Holm p"), cls = "sec"),
+    l_row("L1", "L1 몫 증가 (확인)"), l_row("L2", "L2 충격 확대 C_s"), l_row("L3", "L3 전이 강화 C_β"),
+    l_row("L4", "L4 국내 변동 C_e"), l_row("L5", "L5 C_s − C_β")),
+  "표 3. 커진 미국 몫과 그 분해 (설계 v8)",
+  paste0("(a) 식 (1)을 기간마다 추정. σ_s = 미국 충격 표준편차, σ_e = 잔차 표준편차, 분산 비율 = β²σ²_s / (β²σ²_s + σ²_e). ",
+         "VAR 미국 몫 = 4변수 VAR(시차 1, Cholesky 미국 → 한국) 10일 예측오차 분산분해에서 미국 두 충격의 몫. ",
+         "(b) 식 (3)의 로짓 분해: C_s = Δlog σ²_s, C_β = 2Δlog|β|, C_e = −Δlog σ²_e (후기 − 전기). 이동 블록 부트스트랩(20일, 1,999회) 95% 백분위 구간과 귀무가설로 옮긴 분포의 p. ",
+         "L2·L5는 단측, L3·L4는 양측. Holm은 L2–L5 × 만기 2 = 8개에 적용(굵게 = Holm p < 0.05). L1은 방향을 미리 본 확인이라 보정에서 뺀다. 설계는 결과 전에 커밋했다(docs/미국몫_분해설계.md).",
+         src("res$part5$period_stats, $tests, $var_fevd")))
+
+cy <- P5$cond_vr_year[P5$cond_vr_year$target == "k10" & P5$cond_vr_year$year >= 2011, ]
+W4 <- 1000; H4 <- 380
+ax_c <- list(x0 = 70, x1 = 470, y0 = 50, y1 = 320, ymax = 0.3)
+ax_d <- list(x0 = 560, x1 = 975, y0 = 50, y1 = 320, ymin = -1.5, ymax = 1.5)
+pxc <- function(d) ax_c$x0 + (as.numeric(d) - rd0) / (rd1 - rd0) * (ax_c$x1 - ax_c$x0); pyc <- function(v) ax_c$y1 - v / ax_c$ymax * (ax_c$y1 - ax_c$y0)
+pxd <- function(y) ax_d$x0 + (y - 2011) / (2026 - 2011) * (ax_d$x1 - ax_d$x0)
+pyd <- function(v) ax_d$y1 - (pmin(pmax(v, ax_d$ymin), ax_d$ymax) - ax_d$ymin) / (ax_d$ymax - ax_d$ymin) * (ax_d$y1 - ax_d$y0)
+GRN <- "#1f8a4c"
+svgD <- paste0(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ", W4, " ", H4, "' font-family=\"'Apple SD Gothic Neo','Noto Sans KR',sans-serif\">",
+  "<rect width='", W4, "' height='", H4, "' fill='#ffffff'/>",
+  paste0(sapply(seq(0, ax_c$ymax, 0.1), function(v) paste0(ln(ax_c$x0, pyc(v), ax_c$x1, pyc(v), if (v == 0) GRY else "#e4e3dd", 1),
+    tx(ax_c$x0 - 8, pyc(v) + 5, paste0(round(100 * v), "%"), 15, 400, MUTE, "end"))), collapse = ""),
+  paste0(sapply(seq(2014, 2026, 4), function(y) { x <- pxc(as.Date(paste0(y, "-01-01"))); paste0(ln(x, ax_c$y1, x, ax_c$y1 + 5, MUTE, 1), tx(x, ax_c$y1 + 24, y, 15, 400, MUTE)) }), collapse = ""),
+  tx((ax_c$x0 + ax_c$x1) / 2, ax_c$y1 + 46, "1,000일 창의 끝 날짜", 15, 400, MUTE),
+  tx(ax_c$x0, 24, "(a) VAR 분산분해의 미국 몫 (롤링)", 16.5, 700, INK, "start"),
+  pline(pxc(rf$end_date), pyc(rf$us_share_kr3), KR, 1.8), pline(pxc(rf$end_date), pyc(rf$us_share_kr10), US, 1.8),
+  ln(ax_c$x0 + 10, ax_c$y0 + 6, ax_c$x0 + 40, ax_c$y0 + 6, KR, 2.4), tx(ax_c$x0 + 46, ax_c$y0 + 11, "3년물", 15, 700, KR, "start"),
+  ln(ax_c$x0 + 110, ax_c$y0 + 6, ax_c$x0 + 140, ax_c$y0 + 6, US, 2.4), tx(ax_c$x0 + 146, ax_c$y0 + 11, "10년물", 15, 700, US, "start"),
+  paste0(sapply(seq(ax_d$ymin, ax_d$ymax, 0.5), function(v) paste0(ln(ax_d$x0, pyd(v), ax_d$x1, pyd(v), if (v == 0) GRY else "#e4e3dd", 1),
+    tx(ax_d$x0 - 8, pyd(v) + 5, formatC(v, format = "f", digits = 1), 15, 400, MUTE, "end"))), collapse = ""),
+  paste0(sapply(seq(2011, 2026, 3), function(y) tx(pxd(y), ax_d$y1 + 24, y, 15, 400, MUTE)), collapse = ""),
+  tx((ax_d$x0 + ax_d$x1) / 2, ax_d$y1 + 46, "연도 (표본 평균 대비 로그 차이)", 15, 400, MUTE),
+  tx(ax_d$x0, 24, "(b) 10년물 연도별 분해", 16.5, 700, INK, "start"),
+  pline(pxd(cy$year), pyd(cy$c_s), US, 2.2), pline(pxd(cy$year), pyd(cy$c_beta), KR, 2.2), pline(pxd(cy$year), pyd(cy$c_e), GRN, 2.2, "6 4"),
+  ln(ax_d$x0 + 10, ax_d$y0 + 6, ax_d$x0 + 40, ax_d$y0 + 6, US, 2.4), tx(ax_d$x0 + 46, ax_d$y0 + 11, "충격 크기", 15, 700, US, "start"),
+  ln(ax_d$x0 + 135, ax_d$y0 + 6, ax_d$x0 + 165, ax_d$y0 + 6, KR, 2.4), tx(ax_d$x0 + 171, ax_d$y0 + 11, "전이 계수", 15, 700, KR, "start"),
+  ln(ax_d$x0 + 260, ax_d$y0 + 6, ax_d$x0 + 290, ax_d$y0 + 6, GRN, 2.4, "6 4"), tx(ax_d$x0 + 296, ax_d$y0 + 11, "국내 변동", 15, 700, GRN, "start"),
+  "</svg>")
+TD <- sub("<figure class='tbl'>", "<figure class='tbl tight'>", TD, fixed = TRUE)
+FIGD_SVG <- "output/figures/paper_figure3_us_share.svg"
+writeLines(svgD, FIGD_SVG, useBytes = TRUE)
+FD <- paste0("<figure class='fig'><figcaption>그림 3. 커진 미국 몫과 그 구성</figcaption>",
+             "<img src='../figures/paper_figure3_us_share.svg'><p class='note'>",
+             "(a) 4변수 VAR(시차 ", P4$var_model$lag_bic, ")를 1,000일 창으로 20일마다 추정한 10일 예측오차 분산분해에서 미국 두 충격의 몫. ",
+             "(b) 미국 충격과 식 (1) 잔차의 GARCH(1,1)-t 조건부 분산의 연평균과 연도별 전이 계수로 구한 세 요인: 충격 크기 = log(연평균 h_s / 표본 평균), 전이 계수 = 2 log(|β_연도| / 기하평균), 국내 변동 = −log(연평균 h_e / 표본 평균). ",
+             "세 값의 합이 그해 분산 비율 로짓의 표본 평균 대비 차이다(국내 변동이 커지면 음수). 2010년은 10년물 전이 계수가 0에 가까워(0.02) 뺐다. ±1.5에서 잘랐다.",
+             src("res$part5$cond_vr_year, res$part4$var_model$rolling_fevd"), "</p></figure>")
+
 css <- "
 @page { size: A4; margin: 22mm 20mm; }
 body { font-family: 'AppleMyungjo', 'Nanum Myeongjo', serif; font-size: 11pt; line-height: 1.3; color: #0b0b0b; background: #fff; }
@@ -440,14 +505,15 @@ tr:last-child td { border-bottom: 1.4px solid #0b0b0b; }
 tr.sec td { padding-top: 6pt; } tr.joint td { border-top: 0.5px solid #c9c8c2; color: #3a3a38; }
 tr.main td { background: #f3f3f0; } tr.ref td { color: #52514e; border-top: 0.5px solid #c9c8c2; }
 .note { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 8pt; line-height: 1.4; color: #3a3a38; margin: 4pt 0 0; }
+.tight td, .tight th { white-space: nowrap; padding-left: 3pt; padding-right: 3pt; }
 .src { color: #8a8984; } .se { color: #5b5a55; font-size: 7.6pt; }
 .fig img { display: block; width: 100%; border: 0.5px solid #e4e3dd; }
 "
 html <- paste0("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>본문 표 초안</title><style>", css, "</style></head><body>",
-  "<h1>본문 표·그림 초안 (그림 1–2, 표 1–6)</h1>",
+  "<h1>본문 표·그림 초안</h1>",
   "<p class='sub'>보고서 구성안 기준 · 수치는 output/Team_result.RData의 res$paper에서 자동 생성 · ", format(Sys.Date()),
   "</p>",
-  F1, T1, T2, F2, T3, T4, T5, T6, T7, T8, F3, TA1, TA2, TA3, TA4, TA5, TA6, TA7, "</body></html>")
+  F1, T1, T2, F2, TD, FD, T3, T4, T5, T7, T6, TA1, TA2, TA3, TA4, TA5, TA6, TA7, "</body></html>")
 writeLines(html, OUT_HTML, useBytes = TRUE)
 message("wrote ", OUT_HTML)
 

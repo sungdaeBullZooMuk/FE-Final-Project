@@ -8,12 +8,12 @@
 # =============================================================================
 library(commonmark)
 E <- new.env()
-sys.source("code/05_paper_tables.R", envir = E)       # builds T1-T8, F1-F3, appendix tables (and refreshes the table preview)
+sys.source("code/05_paper_tables.R", envir = E)       # builds T1-T8, TD, F1-F3, FD, appendix tables (and refreshes the table preview)
 OUT_HTML <- "output/report/paper_draft.html"
 OUT_PDF  <- "reports/본문_초안.pdf"
 
-blocks <- c("표 1" = E$T1, "표 2" = E$T2, "표 3" = E$T3, "표 4" = E$T4, "표 5" = E$T5, "표 6" = E$T6, "표 7" = E$T7, "표 8" = E$T8,
-            "그림 1" = E$F1, "그림 2" = E$F2, "그림 3" = E$F3,
+blocks <- c("표 1" = E$T1, "표 2" = E$T2, "표 3" = E$TD, "표 4" = E$T3, "표 5" = E$T4, "표 6" = E$T5, "표 7" = E$T7, "표 8" = E$T6,
+            "그림 1" = E$F1, "그림 2" = E$F2, "그림 3" = E$FD,
             "표 A1" = E$TA1, "표 A2" = E$TA3, "표 A3" = E$TA6, "표 A4" = E$TA7)
 blocks <- gsub("<br><span class='src'>.*?</span>", "", blocks, perl = TRUE)   # source-file lines are for the table preview only
 files <- sort(list.files("paper", pattern = "\\.md$", full.names = TRUE))
