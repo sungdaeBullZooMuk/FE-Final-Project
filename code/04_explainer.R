@@ -2,8 +2,8 @@
 # 04_explainer.R
 # Beginner-friendly explanation of the whole project (Korean), from
 # code/explainer_template.html with numbers filled from output/Team_result.RData.
-# Uses the same result objects as the paper draft (design v7: part 1 specs A-D, part 3 N-tests,
-# part 4 volatility spillover with course models).
+# Uses the same result objects as the paper draft (design v8: the rising US share and its
+# decomposition as the core; v6 conditions and shock type, v7 volatility as supporting analyses).
 # Run from "Final Project":  Rscript code/04_explainer.R
 # Output: output/report/explainer.html and reports/연구_쉬운설명.pdf (headless Chrome).
 # Not part of the submission file.
@@ -82,6 +82,26 @@ rf   <- p4$var_model$rolling_fevd; ci <- p4$coint
 sup  <- function(chk, tg) p4$supp[startsWith(p4$supp$check, chk) & p4$supp$target == tg, "p"]
 cot  <- function(pr, col) ci[ci$pair == pr, col]
 
+# design v8 core: US share by period, logit decomposition, block bootstrap tests
+p5 <- res$part5; ps5 <- p5$period_stats; t5x <- p5$tests; vf5 <- p5$var_fevd; rb5 <- p5$robustness
+psv <- function(tg, k, col) ps5[ps5$target == tg, col][k]
+dcv <- function(tg, col) p5$decomposition[p5$decomposition$target == tg, col]
+fpb <- function(p) ifelse(p < 0.001, formatC(p, format = "f", digits = 4), formatC(p, format = "f", digits = 3))
+per_rows <- paste(sapply(c("k3", "k10"), function(tg) paste(sapply(1:2, function(k) {
+  v <- vf5[vf5$response == sub("k", "kr", tg), ]
+  paste0("<tr><td>", if (k == 1) ifelse(tg == "k3", "3년물", "10년물") else "", "</td><td>", c("2010–2019", "2020–2026")[k],
+         "</td><td class='n'>", f(psv(tg, k, "beta"), 3), "</td><td class='n'>", f(sqrt(psv(tg, k, "var_s")), 1),
+         "</td><td class='n'>", f(sqrt(psv(tg, k, "var_e")), 1), "</td><td class='n'><b>", pct(psv(tg, k, "vr"), 1),
+         "</b></td><td class='n'>", pct(c(v$share_early, v$share_late)[k], 1), "</td></tr>") }), collapse = "\n")), collapse = "\n")
+L_KO <- c(L1 = "L1 미국 몫 증가", L2 = "L2 충격 확대 C_s", L3 = "L3 전이 강화 C_β", L4 = "L4 국내 변동 C_e", L5 = "L5 충격 확대 − 전이 강화")
+l_rows <- paste(sapply(names(L_KO), function(k) {
+  cell <- function(tg) { r <- t5x[startsWith(t5x$test, k) & t5x$target == tg, ]
+    val <- if (k == "L1") paste0("+", f(100 * r$estimate, 1), "%p") else f(r$estimate, 2)
+    ci <- if (k == "L1") paste0("[", f(100 * r$lo, 1), ", ", f(100 * r$hi, 1), "]") else paste0("[", f(r$lo, 2), ", ", f(r$hi, 2), "]")
+    hp <- if (is.na(r$p_holm)) paste0("(", fpb(r$p), ")") else bold(fpb(r$p_holm), r$p_holm)
+    paste0("<td class='n'>", val, "</td><td class='n'>", ci, "</td><td class='n'>", hp, "</td>") }
+  paste0("<tr><td>", L_KO[k], "</td>", cell("k3"), cell("k10"), "</tr>") }), collapse = "\n")
+
 jwr <- function(tg) { p <- unlist(jw[jw$target == tg, c("p_A", "p_B")]); r <- unique(fp(range(p))); paste(r, collapse = "–") }
 
 v <- list(
@@ -132,7 +152,21 @@ v <- list(
   po10 = f(cot("kr10y ~ us10y", "po_stat"), 1), po3 = f(cot("kr3y ~ us2y", "po_stat"), 1), po_cv = f(ci$po_cv5[1], 1),
   jo10 = f(cot("kr10y ~ us10y", "jo_r0"), 1), jo3 = f(cot("kr3y ~ us2y", "jo_r0"), 1), jo_cv = f(ci$jo_r0_cv5[1], 2),
   sp2_3 = fp(sup("P2 split", "k3")), sp2_10 = fp(sup("P2 split", "k10")),
-  sud_3 = fp(sup("US up vs down", "k3")), sud_10 = fp(sup("US up vs down", "k10"))
+  sud_3 = fp(sup("US up vs down", "k3")), sud_10 = fp(sup("US up vs down", "k10")),
+  vr_e3 = pct(psv("k3", 1, "vr"), 1), vr_l3 = pct(psv("k3", 2, "vr"), 1), vr_e10 = pct(psv("k10", 1, "vr"), 1), vr_l10 = pct(psv("k10", 2, "vr"), 1),
+  sds_e3 = f(sqrt(psv("k3", 1, "var_s")), 1), sds_l3 = f(sqrt(psv("k3", 2, "var_s")), 1),
+  b_e3 = f(psv("k3", 1, "beta")), b_l3 = f(psv("k3", 2, "beta")), b_e10 = f(psv("k10", 1, "beta")), b_l10 = f(psv("k10", 2, "beta")),
+  bp_e10 = f(10 * psv("k10", 1, "beta"), 1), bp_l10 = f(10 * psv("k10", 2, "beta"), 1),
+  dl10 = f(dcv("k10", "d_logit")), cb10 = f(dcv("k10", "C_beta")), cs10 = f(dcv("k10", "C_s")), ce10 = f(dcv("k10", "C_e")),
+  per_rows = per_rows, l_rows = l_rows,
+  brk_s3 = format(p5$supwald_s2$break_date[p5$supwald_s2$target == "k3"], "%Y년 %m월"),
+  brk_s10 = format(p5$supwald_s2$break_date[p5$supwald_s2$target == "k10"], "%Y년 %m월"),
+  h5_3 = fpb(t5x$p_holm[startsWith(t5x$test, "L5") & t5x$target == "k3"]),
+  nb_p5_3 = fpb(rb5$p_L5[rb5$target == "k3" & rb5$check == "late period without 2020"]),
+  var_rm3 = pct(vr$rate[vr$target == "k3" & vr$level == 0.01 & vr$model == "RiskMetrics"], 1),
+  var_rm10 = pct(vr$rate[vr$target == "k10" & vr$level == 0.01 & vr$model == "RiskMetrics"], 1),
+  var_g3 = pct(vr$rate[vr$target == "k3" & vr$level == 0.01 & vr$model == "G0"], 1),
+  var_g10 = pct(vr$rate[vr$target == "k10" & vr$level == 0.01 & vr$model == "G0"], 1)
 )
 stopifnot(all(lengths(v) == 1), !any(is.na(unlist(v))))
 
