@@ -4,10 +4,12 @@
 # Convert to PDF with headless Chrome (see bottom). Run from "Final Project":
 #   Rscript code/03_results_report.R
 # Not part of the submission file: an internal summary for the team.
+# FROZEN at design v6 (2026-11-24). Does not cover v7 (volatility) or v8 (US share
+# decomposition); the paper draft and the explainer replace it.
 # =============================================================================
 load("output/Team_result.RData")
 OUT_HTML <- "output/report/results_summary.html"
-OUT_PDF  <- "reports/분석결과_정리.pdf"
+OUT_PDF  <- "reports/archive/분석결과_정리_v6.pdf"
 dir.create(dirname(OUT_HTML), recursive = TRUE, showWarnings = FALSE)
 
 f  <- function(x, d = 3) ifelse(is.na(x), "–", formatC(x, format = "f", digits = d))
